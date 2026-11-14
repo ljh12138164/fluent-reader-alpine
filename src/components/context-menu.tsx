@@ -271,7 +271,7 @@ function ItemContextMenu() {
 function TextContextMenu() {
     const target = useAppSelector(state => state.app.contextMenu.target) as [
         string,
-        string
+        string,
     ]
     const text = target[0]
     const url = target[1]

@@ -4,7 +4,12 @@ dist/*.js.map
 dist/*.html
 dist/*.LICENSE.txt
 dist/griffel.css
+dist/main.css
+src-tauri/target/
+src-tauri/gen/
+graphify-out/
 bin/*
 .DS_Store
 *.provisionprofile
 *.lock
+!src-tauri/Cargo.lock

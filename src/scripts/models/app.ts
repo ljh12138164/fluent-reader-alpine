@@ -1,4 +1,5 @@
 import intl from "react-intl-universal"
+import { onAction, sendNotification } from "@tauri-apps/plugin-notification"
 import {
     INIT_SOURCES,
     SourceActionTypes,
@@ -339,21 +340,11 @@ export function pushNotification(item: RSSItem): AppThunk {
     return (dispatch, getState) => {
         const sourceName = getState().sources[item.source].name
         if (!window.utils.isFocused()) {
-            const options = { body: sourceName } as any
-            if (item.thumb) options.icon = item.thumb
-            const notification = new Notification(item.title, options)
-            notification.onclick = () => {
-                const state = getState()
-                if (
-                    state.sources[item.source].openTarget ===
-                    SourceOpenTarget.External
-                ) {
-                    window.utils.openExternal(item.link)
-                } else if (!state.app.settings.display) {
-                    window.utils.focus()
-                    dispatch(showItemFromId(item._id))
-                }
-            }
+            sendNotification({
+                title: item.title,
+                body: sourceName,
+                extra: { articleId: item._id },
+            })
         }
         dispatch({
             type: PUSH_NOTIFICATION,
@@ -393,8 +384,24 @@ export function initIntl(): AppThunk<Promise<void>> {
 }
 
 export function initApp(): AppThunk<Promise<void>> {
-    return async dispatch => {
+    return async (dispatch, getState) => {
         document.body.classList.add(window.utils.platform)
+        void onAction(({ actionId, notification }) => {
+            const articleId = notification?.extra?.articleId
+            if (actionId !== "tap" || typeof articleId !== "number") return
+            const state = getState()
+            const item = state.items[articleId]
+            if (!item) return
+            if (
+                state.sources[item.source]?.openTarget ===
+                SourceOpenTarget.External
+            )
+                window.utils.openExternal(item.link)
+            else if (!state.app.settings.display) {
+                window.utils.focus()
+                dispatch(showItemFromId(articleId))
+            }
+        }).catch(console.error)
         await dispatch(initIntl())
         if (window.utils.platform === "darwin") initTouchBarWithTexts()
         try {

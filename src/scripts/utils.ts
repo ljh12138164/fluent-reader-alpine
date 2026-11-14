@@ -1,3 +1,4 @@
+import { fetch } from "../bridges/http"
 import intl from "react-intl-universal"
 import { ThunkAction, ThunkDispatch } from "redux-thunk"
 import { AnyAction } from "redux"

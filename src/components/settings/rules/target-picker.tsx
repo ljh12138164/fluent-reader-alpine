@@ -34,10 +34,10 @@ export function RuleTargetPicker({
     const targetName = !target
         ? ""
         : target.type === "all"
-        ? intl.get("allArticles")
-        : target.type === "source"
-        ? sources[target.sid]?.name || ""
-        : namedGroups.find(group => group.gid === target.gid)?.name || ""
+          ? intl.get("allArticles")
+          : target.type === "source"
+            ? sources[target.sid]?.name || ""
+            : namedGroups.find(group => group.gid === target.gid)?.name || ""
     const targetIcon =
         target?.type === "source" ? sources[target.sid]?.iconurl : undefined
 
@@ -74,8 +74,8 @@ export function RuleTargetPicker({
                         type === "all"
                             ? { type: "all" }
                             : type === "group"
-                            ? { type: "group", gid: Number(id) }
-                            : { type: "source", sid: Number(id) }
+                              ? { type: "group", gid: Number(id) }
+                              : { type: "source", sid: Number(id) }
                     )
                 }}>
                 <OptionGroup>

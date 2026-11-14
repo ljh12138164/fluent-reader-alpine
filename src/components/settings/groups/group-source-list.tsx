@@ -73,8 +73,8 @@ export function GroupSourceList({
         id === "icon"
             ? styles.iconColumn
             : id === "name"
-            ? styles.nameColumn
-            : undefined
+              ? styles.nameColumn
+              : undefined
 
     function selectSource(
         event: React.MouseEvent,

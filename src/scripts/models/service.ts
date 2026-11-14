@@ -3,7 +3,7 @@ import { and, eq, isNotNull, or } from "drizzle-orm"
 import { SyncService, ServiceConfigs } from "../../schema-types"
 import { AppThunk, ActionStatus } from "../utils"
 import { RSSItem, insertItems, fetchItemsSuccess } from "./item"
-import { saveSettings, pushNotification } from "./app"
+import { exitSettings, saveSettings, pushNotification } from "./app"
 import {
     deleteSource,
     updateUnreadCounts,
@@ -66,6 +66,7 @@ export function syncWithService(background = false): AppThunk<Promise<void>> {
     return async (dispatch, getState) => {
         const hooks = dispatch(getServiceHooks())
         if (hooks.updateSources && hooks.fetchItems && hooks.syncItems) {
+            const settingsWereOpen = getState().app.settings.display
             try {
                 dispatch({
                     type: SYNC_SERVICE,
@@ -88,6 +89,8 @@ export function syncWithService(background = false): AppThunk<Promise<void>> {
                 })
             } finally {
                 if (getState().app.settings.saving) dispatch(saveSettings())
+                if (!settingsWereOpen && getState().app.settings.display)
+                    await dispatch(exitSettings())
             }
         }
     }

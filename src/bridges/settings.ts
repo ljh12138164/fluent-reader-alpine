@@ -8,162 +8,280 @@ import {
     StoredRule,
     StoredRules,
     RuleTarget,
+    SyncService,
+    getRuleTargetKey,
+    ARTICLE_OVERLAY_MIN_WIDTH,
+    LIST_VIEW_MIN_WIDTH,
 } from "../schema-types"
-import { ipcRenderer } from "electron"
+import {
+    runtimeState,
+    persistSettingsCache,
+    tauriInvoke,
+    themeListeners,
+    computeShouldUseDarkColors,
+} from "./tauri-runtime"
+
+function getSetting<T>(key: string, defaultVal: T): T {
+    const val = runtimeState.settings[key]
+    return val !== undefined ? (val as T) : defaultVal
+}
+
+function setSettingAsync(key: string, value: unknown): Promise<void> {
+    if (value === null || value === undefined) {
+        delete runtimeState.settings[key]
+    } else {
+        runtimeState.settings[key] = value
+    }
+    persistSettingsCache()
+    return tauriInvoke("set_setting", { key, value: value ?? null })
+}
+
+function nextGroupId(): number {
+    const groups = getSetting<SourceGroup[]>("sourceGroups", [])
+    const ids = groups.map(g => g.gid)
+    const rules = getSetting<StoredRules>("sourceRules", {})
+    for (const key of Object.keys(rules)) {
+        if (key.startsWith("group:")) ids.push(Number(key.slice(6)))
+    }
+    return Math.max(
+        getSetting<number>("nextGroupId", 0),
+        ...ids
+            .filter(id => Number.isSafeInteger(id) && id >= 0)
+            .map(id => id + 1)
+    )
+}
 
 const settingsBridge = {
     allocateGroupId: (): number => {
-        return ipcRenderer.sendSync("allocate-group-id")
+        const gid = nextGroupId()
+        runtimeState.settings.nextGroupId = gid + 1
+        persistSettingsCache()
+        tauriInvoke("allocate_group_id")
+        return gid
     },
     saveGroups: (groups: SourceGroup[]) => {
-        return ipcRenderer.invoke("set-groups", groups)
+        return setSettingAsync("sourceGroups", groups)
     },
     loadGroups: (): SourceGroup[] => {
-        return ipcRenderer.sendSync("get-groups")
+        const nextId = nextGroupId()
+        if (getSetting<number>("nextGroupId", 0) < nextId) {
+            runtimeState.settings.nextGroupId = nextId
+        }
+        const groups = getSetting<SourceGroup[]>("sourceGroups", []).map(g => ({
+            ...g,
+        }))
+        const ids = new Set<number>()
+        let changed = false
+        for (const group of groups) {
+            if (
+                !Number.isSafeInteger(group.gid) ||
+                group.gid < 0 ||
+                ids.has(group.gid)
+            ) {
+                group.gid = settingsBridge.allocateGroupId()
+                changed = true
+            }
+            if ("index" in group) {
+                delete group.index
+                changed = true
+            }
+            ids.add(group.gid)
+        }
+        if (changed) {
+            setSettingAsync("sourceGroups", groups)
+        }
+        return groups
     },
 
     getDefaultMenu: (): boolean => {
-        return ipcRenderer.sendSync("get-menu")
+        return getSetting<boolean>("menuOn", false)
     },
     setDefaultMenu: (state: boolean) => {
-        ipcRenderer.invoke("set-menu", state)
+        setSettingAsync("menuOn", state)
     },
 
     getProxyStatus: (): boolean => {
-        return ipcRenderer.sendSync("get-proxy-status")
+        return getSetting<boolean>("pacOn", false)
     },
     toggleProxyStatus: () => {
-        ipcRenderer.send("toggle-proxy-status")
+        const next = !settingsBridge.getProxyStatus()
+        setSettingAsync("pacOn", next)
     },
     getProxy: (): string => {
-        return ipcRenderer.sendSync("get-proxy")
+        return getSetting<string>("pac", "")
     },
     setProxy: (address: string = null) => {
-        ipcRenderer.invoke("set-proxy", address)
+        if (address) {
+            setSettingAsync("pac", address)
+        }
     },
 
     getDefaultView: (): ViewType => {
-        return ipcRenderer.sendSync("get-view")
+        return getSetting<ViewType>("view", ViewType.Cards)
     },
     setDefaultView: (viewType: ViewType) => {
-        ipcRenderer.invoke("set-view", viewType)
+        setSettingAsync("view", viewType)
     },
 
     getThemeSettings: (): ThemeSettings => {
-        return ipcRenderer.sendSync("get-theme")
+        return getSetting<ThemeSettings>("theme", ThemeSettings.Default)
     },
     setThemeSettings: (theme: ThemeSettings) => {
-        ipcRenderer.invoke("set-theme", theme)
+        runtimeState.settings.theme = theme
+        persistSettingsCache()
+        tauriInvoke<boolean>("set_theme", { theme }).then(isDark => {
+            runtimeState.shouldUseDarkColors = isDark
+            themeListeners.forEach(cb => cb(isDark))
+        })
     },
     shouldUseDarkColors: (): boolean => {
-        return ipcRenderer.sendSync("get-theme-dark-color")
+        return computeShouldUseDarkColors()
     },
     addThemeUpdateListener: (callback: (shouldDark: boolean) => any) => {
-        ipcRenderer.on("theme-updated", (_, shouldDark) => {
-            callback(shouldDark)
-        })
+        themeListeners.add(callback)
     },
 
     setLocaleSettings: (option: string) => {
-        ipcRenderer.invoke("set-locale", option)
+        setSettingAsync("locale", option)
     },
     getLocaleSettings: (): string => {
-        return ipcRenderer.sendSync("get-locale-settings")
+        return getSetting<string>("locale", "default")
     },
     getCurrentLocale: (): string => {
-        return ipcRenderer.sendSync("get-locale")
+        const setting = settingsBridge.getLocaleSettings()
+        return setting === "default" ? runtimeState.systemLocale : setting
     },
 
     getFontSize: (): number => {
-        return ipcRenderer.sendSync("get-font-size")
+        return getSetting<number>("fontSize", 16)
     },
     setFontSize: (size: number) => {
-        ipcRenderer.invoke("set-font-size", size)
+        setSettingAsync("fontSize", size)
     },
 
     getFont: (): string => {
-        return ipcRenderer.sendSync("get-font")
+        return getSetting<string>("fontFamily", "")
     },
     setFont: (font: string) => {
-        ipcRenderer.invoke("set-font", font)
+        setSettingAsync("fontFamily", font)
     },
 
     getArticleOverlayWidth: (): number => {
-        return ipcRenderer.sendSync("get-article-overlay-width")
+        const width = getSetting<number>(
+            "articleOverlayWidth",
+            ARTICLE_OVERLAY_MIN_WIDTH
+        )
+        return Number.isFinite(width)
+            ? Math.max(ARTICLE_OVERLAY_MIN_WIDTH, Math.round(width))
+            : ARTICLE_OVERLAY_MIN_WIDTH
     },
     setArticleOverlayWidth: (width: number): Promise<void> => {
-        return ipcRenderer.invoke("set-article-overlay-width", width)
+        if (Number.isFinite(width) && width >= ARTICLE_OVERLAY_MIN_WIDTH) {
+            return setSettingAsync("articleOverlayWidth", Math.round(width))
+        }
+        return Promise.resolve()
     },
 
     getListViewWidth: (): number => {
-        return ipcRenderer.sendSync("get-list-view-width")
+        const width = getSetting<number>("listViewWidth", LIST_VIEW_MIN_WIDTH)
+        return Number.isFinite(width)
+            ? Math.max(LIST_VIEW_MIN_WIDTH, Math.round(width))
+            : LIST_VIEW_MIN_WIDTH
     },
     setListViewWidth: (width: number): Promise<void> => {
-        return ipcRenderer.invoke("set-list-view-width", width)
+        if (Number.isFinite(width) && width >= LIST_VIEW_MIN_WIDTH) {
+            return setSettingAsync("listViewWidth", Math.round(width))
+        }
+        return Promise.resolve()
     },
 
     getFetchInterval: (): number => {
-        return ipcRenderer.sendSync("get-fetch-interval")
+        return getSetting<number>("fetchInterval", 0)
     },
     setFetchInterval: (interval: number) => {
-        ipcRenderer.invoke("set-fetch-interval", interval)
+        setSettingAsync("fetchInterval", interval)
     },
 
     getSearchEngine: (): SearchEngines => {
-        return ipcRenderer.sendSync("get-search-engine")
+        return getSetting<SearchEngines>("searchEngine", SearchEngines.Google)
     },
     setSearchEngine: (engine: SearchEngines) => {
-        ipcRenderer.invoke("set-search-engine", engine)
+        setSettingAsync("searchEngine", engine)
     },
 
     getServiceConfigs: (): ServiceConfigs => {
-        return ipcRenderer.sendSync("get-service-configs")
+        return getSetting<ServiceConfigs>("serviceConfigs", {
+            type: SyncService.None,
+        })
     },
     setServiceConfigs: (configs: ServiceConfigs) => {
-        ipcRenderer.invoke("set-service-configs", configs)
+        setSettingAsync("serviceConfigs", configs)
     },
 
     getFilterType: (): number => {
-        return ipcRenderer.sendSync("get-filter-type")
+        return getSetting<number>("filterType", null)
     },
     setFilterType: (filterType: number) => {
-        ipcRenderer.invoke("set-filter-type", filterType)
+        setSettingAsync("filterType", filterType)
     },
 
     getViewConfigs: (view: ViewType): ViewConfigs => {
-        return ipcRenderer.sendSync("get-view-configs", view)
+        switch (view) {
+            case ViewType.List:
+                return getSetting<ViewConfigs>(
+                    "listViewConfigs",
+                    ViewConfigs.ShowCover
+                )
+            default:
+                return undefined
+        }
     },
     setViewConfigs: (view: ViewType, configs: ViewConfigs) => {
-        ipcRenderer.invoke("set-view-configs", view, configs)
+        switch (view) {
+            case ViewType.List:
+                setSettingAsync("listViewConfigs", configs)
+                break
+        }
     },
 
     getAllRules: (): StoredRules => {
-        return ipcRenderer.sendSync("get-all-rules")
+        return getSetting<StoredRules>("sourceRules", {})
     },
-    setRulesForTarget: (
+    setRulesForTarget: async (
         target: RuleTarget,
         rules: StoredRule[]
     ): Promise<void> => {
-        return ipcRenderer.invoke("set-rules-for-target", target, rules)
+        const targetKey = getRuleTargetKey(target)
+        const updated = await tauriInvoke<StoredRules>("set_rules_for_target", {
+            targetKey,
+            rules,
+        })
+        runtimeState.settings.sourceRules = updated
+        persistSettingsCache()
     },
-    migrateLovefieldRules: (
+    migrateLovefieldRules: async (
         sources: Record<string, unknown>[]
     ): Promise<void> => {
-        return ipcRenderer.invoke("migrate-lovefield-rules", sources)
+        const updated = await tauriInvoke<StoredRules>(
+            "migrate_lovefield_rules",
+            { sources }
+        )
+        runtimeState.settings.sourceRules = updated
+        persistSettingsCache()
     },
 
     getDBVersion: (): string | null => {
-        return ipcRenderer.sendSync("get-db-version")
+        return getSetting<string | null>("dbVersion", "sqlite")
     },
     setDBVersion: (version: string): Promise<void> => {
-        return ipcRenderer.invoke("set-db-version", version)
+        return setSettingAsync("dbVersion", version)
     },
 
     getUnreadSourcesOnly: (): boolean => {
-        return ipcRenderer.sendSync("get-unread-sources-only")
+        return getSetting<boolean>("menuUnreadSourcesOnly", false)
     },
     setUnreadSourcesOnly: (flag: boolean) => {
-        ipcRenderer.invoke("set-unread-sources-only", flag)
+        setSettingAsync("menuUnreadSourcesOnly", flag)
     },
 }
 

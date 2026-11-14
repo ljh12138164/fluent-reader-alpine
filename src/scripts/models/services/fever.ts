@@ -1,3 +1,4 @@
+import { fetch } from "../../../bridges/http"
 import intl from "react-intl-universal"
 import { ServiceHooks } from "../service"
 import { ServiceConfigs, SyncService } from "../../../schema-types"

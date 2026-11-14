@@ -12,36 +12,44 @@ const className = (props: Card.Props) => {
     return cn.join(" ")
 }
 
-const MagazineCard: React.FunctionComponent<Card.Props> = props => (
-    <div
-        className={className(props)}
-        {...Card.bindEventsToProps(props)}
-        data-iid={props.item._id}
-        data-is-focusable>
-        {props.item.thumb ? (
-            <div className="head">
-                <img src={props.item.thumb} />
-            </div>
-        ) : null}
-        <div className="data">
-            <div>
-                <h3 className="title">
-                    <Highlights
-                        text={props.item.title}
-                        filter={props.filter}
-                        title
+const MagazineCard: React.FunctionComponent<Card.Props> = React.memo(
+    props => (
+        <div
+            className={className(props)}
+            {...Card.bindEventsToProps(props)}
+            data-iid={props.item._id}
+            data-is-focusable
+            tabIndex={-1}>
+            {props.item.thumb ? (
+                <div className="head">
+                    <img
+                        src={props.item.thumb}
+                        loading="lazy"
+                        decoding="async"
                     />
-                </h3>
-                <p className="snippet">
-                    <Highlights
-                        text={props.item.snippet}
-                        filter={props.filter}
-                    />
-                </p>
+                </div>
+            ) : null}
+            <div className="data">
+                <div>
+                    <h3 className="title">
+                        <Highlights
+                            text={props.item.title}
+                            filter={props.filter}
+                            title
+                        />
+                    </h3>
+                    <p className="snippet">
+                        <Highlights
+                            text={props.item.snippet}
+                            filter={props.filter}
+                        />
+                    </p>
+                </div>
+                <CardInfo source={props.source} item={props.item} showCreator />
             </div>
-            <CardInfo source={props.source} item={props.item} showCreator />
         </div>
-    </div>
+    ),
+    Card.arePropsEqual
 )
 
 export default MagazineCard

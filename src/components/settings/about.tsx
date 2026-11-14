@@ -7,16 +7,27 @@ const AboutTab: React.FC = () => {
         <div className="tab-body">
             <Stack className="settings-about" horizontalAlign="center">
                 <img
-                    src="icons/logo.svg"
-                    alt="Fluent Reader Logo"
+                    src="icons/alpine.png"
+                    alt="Fluent Reader Alpine"
                     style={{ width: 120, height: 120 }}
                 />
-                <h3 style={{ fontWeight: 600 }}>Fluent Reader</h3>
+                <h3 style={{ fontWeight: 600 }}>Fluent Reader Alpine</h3>
                 <small>
                     {intl.get("settings.version")}{" "}
                     {globalThis.utils.getVersion()}
                 </small>
                 <p className="settings-hint">
+                    Lightweight fork of{" "}
+                    <Link
+                        onClick={() =>
+                            globalThis.utils.openExternal(
+                                "https://github.com/yang991178/fluent-reader"
+                            )
+                        }>
+                        Fluent Reader
+                    </Link>
+                    .
+                    <br />
                     Copyright © 2020 Haoyuan Liu. All rights reserved.
                 </p>
                 <Stack
@@ -37,7 +48,7 @@ const AboutTab: React.FC = () => {
                         <Link
                             onClick={() =>
                                 globalThis.utils.openExternal(
-                                    "https://github.com/yang991178/fluent-reader"
+                                    "https://github.com/ljh12138164/fluent-reader-alpine"
                                 )
                             }>
                             {intl.get("settings.openSource")}
@@ -47,7 +58,7 @@ const AboutTab: React.FC = () => {
                         <Link
                             onClick={() =>
                                 globalThis.utils.openExternal(
-                                    "https://github.com/yang991178/fluent-reader/issues"
+                                    "https://github.com/ljh12138164/fluent-reader-alpine/issues"
                                 )
                             }>
                             {intl.get("settings.feedback")}

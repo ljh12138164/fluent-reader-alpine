@@ -1,0 +1,36 @@
+[package]
+name = "fluent-reader-alpine"
+version = "0.1.0"
+description = "A lightweight Tauri-based fork of Fluent Reader"
+authors = ["Haoyuan Liu", "ljh12138164"]
+license = "BSD-3-Clause"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-http = "2"
+tauri-plugin-notification = "2.8.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled", "functions"] }
+regex = "1"
+rfd = "0.15"
+open = "5"
+arboard = "3"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico", "tiff"] }
+sys-locale = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+proxy-watch = { version = "0.3.1", default-features = false, features = ["pac-quickjs"] }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

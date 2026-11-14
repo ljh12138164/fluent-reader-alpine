@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useCallback } from "react"
 import intl from "react-intl-universal"
 import { FeedProps } from "./feed"
 import {
@@ -16,40 +17,77 @@ import { Card } from "../cards/card"
 import { useFeedTabStop } from "../utils/hooks/useFeedTabStop"
 import { FeedEnd } from "./feed-end"
 
+const ITEMS_PER_PAGE = 20
+const COMPACT_ROW_HEIGHT = 32
+
 const ListFeed: React.FC<FeedProps> = props => {
     const { elementRef, onPagesUpdated } = useFeedTabStop()
-    const onRenderItem = (item: RSSItem) => {
-        const cardProps = {
-            feedId: props.feed._id,
-            key: item._id,
-            item: item,
-            source: props.sourceMap[item.source],
-            filter: props.filter,
-            viewConfigs: props.viewConfigs,
-            shortcuts: props.shortcuts,
-            markRead: props.markRead,
-            contextMenu: props.contextMenu,
-            showItem: props.showItem,
-        } as Card.Props
-        if (
-            props.viewType === ViewType.List &&
-            props.currentItem === item._id
-        ) {
-            cardProps.selected = true
-        }
+    const feedId = props.feed._id
+    const {
+        sourceMap,
+        filter,
+        viewConfigs,
+        shortcuts,
+        markRead,
+        contextMenu,
+        showItem,
+        viewType,
+        currentItem,
+    } = props
 
-        switch (props.viewType) {
-            case ViewType.Magazine:
-                return <MagazineCard {...cardProps} />
-            case ViewType.Compact:
-                return <CompactCard {...cardProps} />
-            default:
-                return <ListCard {...cardProps} />
-        }
-    }
+    const onRenderItem = useCallback(
+        (item: RSSItem) => {
+            const cardProps = {
+                feedId,
+                key: item._id,
+                item,
+                source: sourceMap[item.source],
+                filter,
+                viewConfigs,
+                shortcuts,
+                markRead,
+                contextMenu,
+                showItem,
+                selected:
+                    viewType === ViewType.List && currentItem === item._id,
+            } as Card.Props
+
+            switch (viewType) {
+                case ViewType.Magazine:
+                    return <MagazineCard {...cardProps} />
+                case ViewType.Compact:
+                    return <CompactCard {...cardProps} />
+                default:
+                    return <ListCard {...cardProps} />
+            }
+        },
+        [
+            feedId,
+            sourceMap,
+            filter,
+            viewConfigs,
+            shortcuts,
+            markRead,
+            contextMenu,
+            showItem,
+            viewType,
+            currentItem,
+        ]
+    )
+
+    const getItemCountForPage = useCallback(() => ITEMS_PER_PAGE, [])
+    const getCompactPageHeight = useCallback(
+        (
+            index: number,
+            _visibleRect: unknown,
+            itemCount: number,
+            items: RSSItem[]
+        ) => Math.min(itemCount, items.length - index) * COMPACT_ROW_HEIGHT,
+        []
+    )
 
     const getClassName = () => {
-        switch (props.viewType) {
+        switch (viewType) {
             case ViewType.Magazine:
                 return "magazine-feed"
             case ViewType.Compact:
@@ -73,6 +111,13 @@ const ListFeed: React.FC<FeedProps> = props => {
                     items={props.items}
                     onRenderCell={onRenderItem}
                     onPagesUpdated={onPagesUpdated}
+                    getItemCountForPage={getItemCountForPage}
+                    getPageHeight={
+                        viewType === ViewType.Compact
+                            ? getCompactPageHeight
+                            : undefined
+                    }
+                    getKey={(item: RSSItem) => String(item._id)}
                     ignoreScrollingState
                     usePageCache
                 />

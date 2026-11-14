@@ -1,121 +1,50 @@
-# Fluent Reader
+# Fluent Reader Alpine
 
 ## Overview
 
-Fluent Reader is a **modern desktop RSS reader** built with **Electron + React + Redux + TypeScript**. It targets Windows, macOS (including Mac App Store), and Linux. The UI uses Microsoft's **Fluent UI (v7)** component library. Article and source data is stored in a **SQLite** database (via **better-sqlite3** in the main process, accessed from the renderer via **drizzle-orm** sqlite-proxy). Settings are persisted with **electron-store**. Articles are parsed with **Mercury Parser** and fetched via **rss-parser**.
-
-The repository is ~80 TypeScript/TSX source files under `src/`. There is no ESLint — formatting is handled solely by **Prettier**.
+Fluent Reader Alpine is an independently maintained lightweight fork of [Fluent Reader](https://github.com/yang991178/fluent-reader) by Haoyuan Liu and its contributors. It retains the upstream reading interface and feed/service logic while migrating the desktop runtime to Tauri and optimizing list virtualization. The app uses React, Redux, TypeScript, and Fluent UI. Rust manages the native window, settings, and SQLite via rusqlite. The renderer queries SQLite using the Drizzle sqlite-proxy adapter over Tauri commands. Preserve upstream attribution and the BSD 3-Clause license when updating documentation or branding.
 
 ## Build & Validate
 
-Always run commands from the repository root.
+Run from the repository root with Node.js 24, the pnpm version in `package.json`, and the platform's Tauri prerequisites.
 
-### Install dependencies
-
-```bash
-npm install
+```sh
+pnpm install --frozen-lockfile
+pnpm check
+pnpm build
 ```
 
-Run this **before every build**. The lockfile (`package-lock.json`) is gitignored (`.lock` in `.gitignore`), so `npm install` resolves from `package.json` each time.
+`pnpm check` runs Oxlint, Oxfmt, and TypeScript. Use `pnpm format` to apply formatting. `pnpm build` compiles the renderer with Rspack into `dist/`.
 
-### Build (compile TypeScript via Webpack)
+Run `pnpm dev` to launch the desktop app or `pnpm package` to build native bundles. Both commands build the renderer through Tauri's build hooks. Bundles are written to `src-tauri/target/release/bundle/`.
 
-```bash
-npm run build
-```
-
-This runs `webpack --config ./webpack.config.js`, which produces three bundles in `dist/`:
-- `electron.js` — Electron main process (from `src/electron.ts`)
-- `preload.js` — Preload script (from `src/preload.ts`)
-- `index.js` + `index.html` — Renderer/React app (from `src/index.tsx`)
-
-Build takes ~30 seconds. A successful build ends with three "compiled successfully" lines — one per webpack config entry.
-
-### Generate DB migrations (only needed when schema changes)
-
-```bash
-npm run drizzle:generate
-```
-
-This runs `drizzle-kit generate` using `drizzle.config.ts` and writes SQL migration files to `dist/drizzle/`. Run this whenever `src/db/schema.ts` changes, then commit the generated files. The `dist/drizzle/` directory is **not** gitignored — migration files are tracked as source.
-
-### Run the app
-
-```bash
-npm run electron
-```
-
-Or combined install + build + run:
-
-```bash
-npm run start
-```
-
-### Format check (Prettier)
-
-```bash
-npx prettier --check .
-```
-
-To auto-fix formatting:
-
-```bash
-npm run format
-```
-
-The Prettier config is in `.prettierrc.yml`: 4-space tabs, no semicolons, JSX bracket on same line, arrow parens avoided, consistent quote props. `.prettierignore` excludes `dist/`, `bin/`, `node_modules/`, HTML, Markdown, and most JSON (except `src/**/*.json`).
-
-### Tests
-
-A private suite of E2E tests is available for project maintainers. Run the suite from the repository root:
-
-```bash
-npm --prefix tests/e2e test
-```
-
-See `tests/README.md` for test setup details.
-
-### Packaging (not needed for typical changes)
-
-- Windows: `npm run package-win`
-- macOS: `npm run package-mac`
-- Linux: `npm run package-linux`
-- Mac App Store: `npm run package-mas` (requires provisioning profile and entitlements in `build/`)
+The private E2E suite is optional. See [tests/README.md](tests/README.md) for setup and commands.
 
 ## CI/CD
 
-Two GitHub Actions workflows in `.github/workflows/`:
-
-- **`release-main.yml`** — Triggered on version tags (`v*`). Runs on `windows-latest`. Steps: `npm install` → `npm run build` → `npm run package-win-ci`. Uploads `.exe` and `.zip` to a draft GitHub release.
-- **`release-linux.yml`** — Triggered when a release is published. Runs on `ubuntu-latest`. Steps: `npm install` → `npm run build` → `npm run package-linux`. Uploads `.AppImage`.
-
-Both CI pipelines run `npm install` then `npm run build`. There are no lint or test steps in CI.
+`release-main.yml` runs when a `v*` version tag is pushed or when manually dispatched for an existing tag. It validates the package/Tauri/Cargo versions, then builds Windows x64 NSIS, universal macOS DMG, and Linux x64 AppImage in parallel. All platforms install with pnpm's frozen lockfile and run `pnpm check` before packaging. Only after all three builds succeed does the release job upload exactly three installers into one draft Release. There is no Windows portable ZIP or separate Linux release workflow. Published releases are never overwritten by a rerun.
 
 ## Project Layout
 
 ### Root files
 | File | Purpose |
 |---|---|
-| `package.json` | Dependencies, scripts, metadata (v1.2.2) |
-| `webpack.config.js` | Three webpack configs: main, preload, renderer |
-| `tsconfig.json` | TypeScript: JSX=react, target=ES2019, module=CommonJS, resolveJsonModule |
-| `drizzle.config.ts` | Drizzle Kit config — schema at `src/db/schema.ts`, migrations output to `dist/drizzle/` |
-| `electron-builder.yml` | Electron Builder config for Win/Mac/Linux distribution |
-| `electron-builder-mas.yml` | Electron Builder config for Mac App Store |
-| `.prettierrc.yml` | Prettier formatting rules |
-| `.prettierignore` | Files excluded from Prettier |
+| `package.json` | Dependencies, pnpm version, and scripts |
+| `rspack.config.js` | Renderer bundler configuration |
+| `tsconfig.json` | TypeScript configuration |
+| `.oxfmtrc.json` | Oxfmt formatting rules and exclusions |
+| `src-tauri/tauri.conf.json` | Tauri build, window, and installer configuration |
+| `src-tauri/src/main.rs` | Native window, Tauri commands, SQLite, and settings |
 
 ### `src/` — All source code
 
 | Path | Description |
 |---|---|
-| `electron.ts` | **Electron main process** entry. Creates app menu, initializes `WindowManager`, calls `initDB`. |
-| `preload.ts` | **Preload script**. Exposes `settingsBridge`, `utilsBridge`, and `dbBridge` via `contextBridge`. |
+| `preload.ts` | **Preload script**. Installs the settings, utilities, and database bridges before the renderer mounts. |
 | `index.tsx` | **Renderer entry**. Mounts React `<Root>` with Redux `<Provider>`. |
 | `schema-types.ts` | Shared TypeScript enums and types (ViewType, ThemeSettings, StoredRule, etc.) |
 | `db/schema.ts` | **Drizzle schema** — defines `sourcesTable` and `itemsTable` for better-sqlite3. |
-| `bridges/` | IPC bridges between renderer and main process (`settings.ts`, `utils.ts`, `db.ts`). |
-| `main/` | Electron main-process modules: `window.ts` (BrowserWindow), `settings.ts` (electron-store + IPC handlers), `db.ts` (SQLite init, migrations, IPC handler for db:execute, export/import), `utils.ts` (IPC utilities), `touchbar.ts`, `update-scripts.ts`. |
+| `bridges/` | Bridges from the renderer to Tauri commands (`settings.ts`, `utils.ts`, `db.ts`). |
 | `scripts/` | Renderer-side logic (runs in browser context). |
 | `scripts/reducer.ts` | Root Redux store — combines: sources, items, feeds, groups, page, service, app. |
 | `scripts/settings.ts` | Theme management, locale setup, Fluent UI theming. |
@@ -128,7 +57,7 @@ Both CI pipelines run `npm install` then `npm run build`. There are no lint or t
 
 ### `dist/` — Build output + static assets
 
-The `dist/` directory contains **both webpack output and checked-in static assets**. Files like `dist/icons/`, `dist/article/`, `dist/styles/`, `dist/index.css`, `dist/fonts.vbs`, `dist/fontlist`, and `dist/drizzle/` are static and tracked in git. The webpack-generated files (`*.js`, `*.js.map`, `*.html`, `*.LICENSE.txt`) are gitignored.
+The `dist/` directory contains **both Rspack output and checked-in static assets**. Files like `dist/icons/`, `dist/article/`, `dist/styles/`, `dist/index.css`, `dist/fonts.vbs`, `dist/fontlist`, and `dist/drizzle/` are static and tracked in git. The Rspack-generated files (`*.js`, `*.js.map`, `*.html`, `*.LICENSE.txt`) are gitignored.
 
 ### `build/` — Packaging resources
 
@@ -136,9 +65,10 @@ Contains app icons (`build/icons/`), macOS entitlements plists, provisioning pro
 
 ## Architecture Notes
 
-- **IPC pattern**: The renderer never imports Electron directly. All Electron APIs are accessed through `src/bridges/` which are exposed via `contextBridge` in `preload.ts`. Settings state flows: renderer → bridge (ipcRenderer) → main/settings.ts (ipcMain handlers) → electron-store.
-- **Database**: SQLite via **better-sqlite3** in the main process. The renderer accesses it through a single `db:execute` IPC handler using **drizzle-orm**'s sqlite-proxy pattern. The drizzle instance in the renderer (`database` from `scripts/db.ts`) sends all queries through `window.db.execute(sql, params, method)`. Schema is defined in `src/db/schema.ts`; migrations live in `dist/drizzle/` and are applied at startup via `migrate()` in `main/db.ts`. The SQLite file is colocated with electron-store's `config.json` (i.e., `path.dirname(store.path)`).
-- **Rules storage**: Rules are stored in electron-store under the `sourceRules` key as a `StoredRules` map. Each value is an ordered `StoredRule[]`. `setRulesForTarget()` replaces one target's rules in the main process; an empty array removes that entry. `getAllRules()` loads the map. Source entries are attached to `RSSSource.rules` during `initSources()`.
+- **IPC pattern**: The renderer calls native operations through the wrappers in `src/bridges/`.
+- **Database**: The renderer's Drizzle sqlite-proxy calls Tauri's `db_execute` command. The native app initializes and opens SQLite in its application config directory. The renderer schema is in `src/db/schema.ts`.
+- **Rules storage**: The native app stores the `sourceRules` map in `config.json`. `setRulesForTarget()` replaces one target's ordered rules. An empty array removes the entry.
+
 - **State management**: Redux with `redux-thunk` for async actions. The store shape is defined by `RootState` in `scripts/reducer.ts`. Each model file in `scripts/models/` exports its own reducer, action types, and thunk action creators.
 - **i18n**: To add or modify translations, edit JSON files in `src/scripts/i18n/`. Register new locales in `_locales.ts`.
 - **RSS service integrations**: Located in `src/scripts/models/services/` (logic) and `src/components/settings/services/` (UI). Supported: Fever, Google Reader API (GReader), Inoreader, Feedbin, Miniflux, Nextcloud.
@@ -146,22 +76,10 @@ Contains app icons (`build/icons/`), macOS entitlements plists, provisioning pro
 ## Key Conventions
 
 - All source is TypeScript (`.ts`/`.tsx`). No plain JavaScript in `src/`.
-- No semicolons. 4-space indentation. See `.prettierrc.yml`.
+- No semicolons. 4-space indentation. See `.oxfmtrc.json`.
 - Enums use `const enum` pattern in `schema-types.ts`.
 - Components use both class components and function components (no strict rule).
 - Redux containers in `containers/` use `connect()` from react-redux.
 - **Griffel styling**: Use `makeStyles` from `@griffel/react` for component-scoped styles. Import `mergeClasses` for combining classes. Prefer Griffel over adding new CSS rules to `dist/styles/`.
 - **`styleClass` prop convention**: Reusable components expose a `styleClass?: string` prop applied to the component's main element, allowing parents to pass Griffel-generated class overrides. If a component has multiple customizable elements, use element-specific prop names (e.g., `buttonStyleClass?: string`). Combine base and override classes with `mergeClasses`.
 - **Flat button components**: `FlatButton`, `FlatButtonGroup`, and `FlatButtonSeparator` in `src/components/utils/` implement the Griffel + `styleClass` pattern. Use these instead of raw `<button>`/`<div>` with CSS class names for toolbar-style buttons.
-
-## Validation Checklist
-
-After any code change, always run:
-```bash
-npm install && npm run build && npx prettier --check .
-```
-All three must succeed. If the build fails, fix TypeScript errors. If prettier fails, run `npm run format` then verify.
-
-Run the E2E test suite if available at the end of sessions to check for regressions, and update the test suite to cover any new features built.
-
-Trust these instructions. Only search the codebase if information here is incomplete or found to be incorrect.

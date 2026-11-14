@@ -1,0 +1,26 @@
+{
+    "$schema": "./node_modules/oxfmt/configuration_schema.json",
+    "printWidth": 80,
+    "tabWidth": 4,
+    "semi": false,
+    "bracketSameLine": true,
+    "arrowParens": "avoid",
+    "quoteProps": "consistent",
+    "trailingComma": "es5",
+    "ignorePatterns": [
+        "dist/",
+        "bin/",
+        "graphify-out/",
+        "build/",
+        "docs/",
+        "src-tauri/Cargo.toml",
+        "src-tauri/target/",
+        "src-tauri/gen/",
+        "tests/e2e/",
+        ".github/FUNDING.yml",
+        ".github/workflows/pages.yml",
+        "*.html",
+        "*.md",
+        "pnpm-lock.yaml"
+    ]
+}

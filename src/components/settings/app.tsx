@@ -112,8 +112,8 @@ function AppTab({
             minutes === 0
                 ? intl.get("app.never")
                 : minutes === 60
-                ? intl.get("time.hour", { h: 1 })
-                : intl.get("time.minute", { m: minutes }),
+                  ? intl.get("time.hour", { h: 1 })
+                  : intl.get("time.minute", { m: minutes }),
     }))
     const searchEngineOptions = [
         SearchEngines.Google,

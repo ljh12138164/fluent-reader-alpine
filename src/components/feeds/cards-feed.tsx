@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import intl from "react-intl-universal"
 import { FeedProps } from "./feed"
 import DefaultCard from "../cards/default-card"
@@ -15,24 +15,28 @@ const CardsFeed: React.FC<FeedProps> = props => {
     const observerRef = useRef<ResizeObserver>(null)
 
     useEffect(() => {
-        setWidth(document.querySelector(".main").clientWidth - 40)
+        const mainEl = document.querySelector(".main")
+        if (!mainEl) return
+        setWidth(mainEl.clientWidth - 40)
         observerRef.current = new ResizeObserver(
             (entries: ResizeObserverEntry[]) => {
-                if (entries) {
-                    setWidth(entries[0].contentRect.width - 40)
-                    setHeight(window.innerHeight)
+                if (entries && entries.length > 0) {
+                    const nextW = entries[0].contentRect.width - 40
+                    const nextH = window.innerHeight
+                    setWidth(prev => (prev !== nextW ? nextW : prev))
+                    setHeight(prev => (prev !== nextH ? nextH : prev))
                 }
             }
         )
-        observerRef.current.observe(document.querySelector(".main"))
+        observerRef.current.observe(mainEl)
         return () => {
             observerRef.current.disconnect()
         }
     }, [])
 
     const getItemCountForPage = useCallback(() => {
-        let elemPerRow = Math.floor(width / 280)
-        let rows = Math.ceil(height / 304)
+        let elemPerRow = Math.max(1, Math.floor(width / 280))
+        let rows = Math.max(1, Math.ceil(height / 304))
         return elemPerRow * rows
     }, [width, height])
 
@@ -40,30 +44,38 @@ const CardsFeed: React.FC<FeedProps> = props => {
         return height + (304 - (height % 304))
     }, [height])
 
-    const flexFixItems = () => {
-        let elemPerRow = Math.floor(width / 280)
+    const flexFixItems = useMemo(() => {
+        let elemPerRow = Math.max(1, Math.floor(width / 280))
         let elemLastRow = props.items.length % elemPerRow
         let items = [...props.items]
-        for (let i = 0; i < elemPerRow - elemLastRow; i += 1) items.push(null)
+        for (let i = 0; i < (elemPerRow - elemLastRow) % elemPerRow; i += 1)
+            items.push(null)
         return items
-    }
+    }, [props.items, width])
 
-    const onRenderItem = (item: RSSItem, index: number) =>
-        item ? (
-            <DefaultCard
-                feedId={props.feed._id}
-                key={item._id}
-                item={item}
-                source={props.sourceMap[item.source]}
-                filter={props.filter}
-                shortcuts={props.shortcuts}
-                markRead={props.markRead}
-                contextMenu={props.contextMenu}
-                showItem={props.showItem}
-            />
-        ) : (
-            <div className="flex-fix" key={"f-" + index}></div>
-        )
+    const feedId = props.feed._id
+    const { sourceMap, filter, shortcuts, markRead, contextMenu, showItem } =
+        props
+
+    const onRenderItem = useCallback(
+        (item: RSSItem, index: number) =>
+            item ? (
+                <DefaultCard
+                    feedId={feedId}
+                    key={item._id}
+                    item={item}
+                    source={sourceMap[item.source]}
+                    filter={filter}
+                    shortcuts={shortcuts}
+                    markRead={markRead}
+                    contextMenu={contextMenu}
+                    showItem={showItem}
+                />
+            ) : (
+                <div className="flex-fix" key={"f-" + index}></div>
+            ),
+        [feedId, sourceMap, filter, shortcuts, markRead, contextMenu, showItem]
+    )
 
     return (
         props.feed.loaded && (
@@ -75,7 +87,7 @@ const CardsFeed: React.FC<FeedProps> = props => {
                 data-is-scrollable>
                 <List
                     className={AnimationClassNames.slideUpIn10}
-                    items={flexFixItems()}
+                    items={flexFixItems}
                     onRenderCell={onRenderItem}
                     onPagesUpdated={onPagesUpdated}
                     getItemCountForPage={getItemCountForPage}

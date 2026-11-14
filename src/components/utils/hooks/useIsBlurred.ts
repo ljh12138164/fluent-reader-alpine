@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 
-export interface AppWindowFocusChangeEvent
-    extends CustomEvent<{ focused: boolean }> {
+export interface AppWindowFocusChangeEvent extends CustomEvent<{
+    focused: boolean
+}> {
     type: "app-window-focus-change"
 }
 

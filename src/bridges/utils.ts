@@ -1,24 +1,128 @@
-import { ipcRenderer } from "electron"
 import {
     ImageCallbackTypes,
     TouchBarTexts,
     WindowStateListenerType,
 } from "../schema-types"
 import { IObjectWithKey } from "@fluentui/react"
+import { fetch } from "./http"
+import {
+    runtimeState,
+    tauriInvoke,
+    windowStateListeners,
+} from "./tauri-runtime"
 
-const utilsBridge = {
-    platform: process.platform,
+export type FileFilter = {
+    name: string
+    extensions: string[]
+}
 
-    getVersion: (): string => {
-        return ipcRenderer.sendSync("get-version")
+export type WebviewInputEvent = {
+    type: string
+    key: string
+    code: string
+    shift: boolean
+    alt: boolean
+    control: boolean
+    meta: boolean
+    isAutoRepeat: boolean
+}
+
+let mainContextCallback: ((pos: [number, number], text: string) => any) | null =
+    null
+const webviewContextListeners = new Set<
+    (pos?: [number, number], text?: string, url?: string) => any
+>()
+const webviewKeydownListeners = new Set<(event: WebviewInputEvent) => any>()
+const webviewErrorListeners = new Set<(reason: string) => any>()
+let lastContextImageSrc = ""
+
+export function emitWebviewContextMenu(
+    pos?: [number, number],
+    text?: string,
+    url?: string,
+    imgSrc?: string
+) {
+    if (imgSrc) {
+        lastContextImageSrc = imgSrc
+    }
+    webviewContextListeners.forEach(cb => cb(pos, text, url))
+}
+
+export function emitWebviewKeydown(input: WebviewInputEvent) {
+    webviewKeydownListeners.forEach(cb => cb(input))
+}
+
+export function emitWebviewError(reason: string) {
+    webviewErrorListeners.forEach(cb => cb(reason))
+}
+
+window.addEventListener("message", event => {
+    const iframe = document.querySelector<HTMLIFrameElement>("#article")
+    if (
+        !iframe ||
+        event.source !== iframe.contentWindow ||
+        event.origin !== "null"
+    )
+        return
+    const data = event.data
+    if (!data || typeof data !== "object") return
+    if (data.type === "fr-open-external" && typeof data.url === "string") {
+        tauriInvoke("open_external", {
+            url: data.url,
+            background: Boolean(data.background),
+        })
+    } else if (data.type === "fr-webview-keydown" && data.input) {
+        emitWebviewKeydown(data.input)
+    } else if (data.type === "fr-webview-context-menu") {
+        if (!data.pos) {
+            emitWebviewContextMenu()
+        } else {
+            const rect = iframe.getBoundingClientRect()
+            const pos: [number, number] = [
+                Math.round(rect.left + data.pos[0]),
+                Math.round(rect.top + data.pos[1]),
+            ]
+            if (data.imgSrc) {
+                emitWebviewContextMenu(pos, undefined, undefined, data.imgSrc)
+            } else {
+                emitWebviewContextMenu(pos, data.text, data.url)
+            }
+        }
+    }
+})
+
+window.addEventListener("contextmenu", e => {
+    const selection = window.getSelection()?.toString() || ""
+    if (selection && mainContextCallback) {
+        e.preventDefault()
+        mainContextCallback([e.clientX, e.clientY], selection)
+    } else if (
+        !(
+            e.target instanceof HTMLInputElement ||
+            e.target instanceof HTMLTextAreaElement
+        )
+    ) {
+        e.preventDefault()
+    }
+})
+
+const utilsBridge: UtilsBridge = {
+    platform: runtimeState.platform,
+
+    getVersion: () => {
+        return runtimeState.version
     },
 
     openExternal: (url: string, background = false) => {
-        ipcRenderer.invoke("open-external", url, background)
+        tauriInvoke("open_external", { url, background })
     },
 
     showErrorBox: (title: string, content: string, copy?: string) => {
-        return ipcRenderer.invoke("show-error-box", title, content, copy)
+        return tauriInvoke("show_error_box", {
+            title,
+            content,
+            copy: copy ?? null,
+        })
     },
 
     showMessageBox: async (
@@ -29,171 +133,230 @@ const utilsBridge = {
         defaultCancel = false,
         type = "none"
     ) => {
-        return (await ipcRenderer.invoke(
-            "show-message-box",
+        return await tauriInvoke<boolean>("show_message_box", {
             title,
             message,
             confirm,
             cancel,
             defaultCancel,
-            type
-        )) as boolean
+            dialogType: type,
+        })
     },
 
-    showSaveDialog: async (filters: Electron.FileFilter[], path: string) => {
-        let result = (await ipcRenderer.invoke(
-            "show-save-dialog",
+    showSaveDialog: async (filters: FileFilter[], path: string) => {
+        const result = await tauriInvoke<boolean>("show_save_dialog", {
             filters,
-            path
-        )) as boolean
+            defaultPath: path,
+        })
         if (result) {
-            return (result: string, errmsg: string) => {
-                ipcRenderer.invoke("write-save-result", result, errmsg)
+            return (resultContent: string, errmsg: string) => {
+                tauriInvoke("write_save_result", {
+                    result: resultContent,
+                    errmsg,
+                })
             }
         } else {
             return null
         }
     },
 
-    showOpenDialog: async (filters: Electron.FileFilter[]) => {
-        return (await ipcRenderer.invoke("show-open-dialog", filters)) as string
+    showOpenDialog: async (filters: FileFilter[]) => {
+        return await tauriInvoke<string | null>("show_open_dialog", { filters })
     },
 
-    getCacheSize: async (): Promise<number> => {
-        return await ipcRenderer.invoke("get-cache")
+    getCacheSize: async () => {
+        return await tauriInvoke<number>("get_cache")
     },
 
     clearCache: async () => {
-        await ipcRenderer.invoke("clear-cache")
+        await tauriInvoke("clear_cache")
     },
 
     addMainContextListener: (
         callback: (pos: [number, number], text: string) => any
     ) => {
-        ipcRenderer.removeAllListeners("window-context-menu")
-        ipcRenderer.on("window-context-menu", (_, pos, text) => {
-            callback(pos, text)
-        })
+        mainContextCallback = callback
     },
+
     addWebviewContextListener: (
         callback: (pos: [number, number], text: string, url: string) => any
     ) => {
-        ipcRenderer.removeAllListeners("webview-context-menu")
-        const listener = (_, pos, text, url) => {
-            callback(pos, text, url)
-        }
-        ipcRenderer.on("webview-context-menu", listener)
+        webviewContextListeners.add(callback)
         return () => {
-            ipcRenderer.removeListener("webview-context-menu", listener)
+            webviewContextListeners.delete(callback)
         }
-    },
-    imageCallback: (type: ImageCallbackTypes) => {
-        ipcRenderer.invoke("image-callback", type)
     },
 
-    addWebviewKeydownListener: (callback: (event: Electron.Input) => any) => {
-        ipcRenderer.removeAllListeners("webview-keydown")
-        const listener = (_, input) => {
-            callback(input)
+    imageCallback: (type: ImageCallbackTypes) => {
+        if (!lastContextImageSrc) return
+        switch (type) {
+            case ImageCallbackTypes.OpenExternal:
+            case ImageCallbackTypes.OpenExternalBg:
+                tauriInvoke("open_external", {
+                    url: lastContextImageSrc,
+                    background: type === ImageCallbackTypes.OpenExternalBg,
+                })
+                break
+            case ImageCallbackTypes.SaveAs:
+                tauriInvoke("save_image_as", { url: lastContextImageSrc })
+                break
+            case ImageCallbackTypes.Copy: {
+                const url = lastContextImageSrc
+                const data = url.startsWith("data:")
+                    ? Promise.resolve().then(() => {
+                          const comma = url.indexOf(",")
+                          const body = url.slice(comma + 1)
+                          return url.slice(0, comma).endsWith(";base64")
+                              ? Uint8Array.from(atob(body), c =>
+                                    c.charCodeAt(0)
+                                )
+                              : Uint8Array.from(
+                                    body.match(/%[0-9a-f]{2}|./gi) || [],
+                                    c =>
+                                        c.startsWith("%")
+                                            ? parseInt(c.slice(1), 16)
+                                            : c.charCodeAt(0)
+                                )
+                      })
+                    : (url.startsWith("blob:")
+                          ? window.fetch(url)
+                          : fetch(url)
+                      ).then(async response => {
+                          if (!response.ok)
+                              throw new Error(`HTTP ${response.status}`)
+                          return new Uint8Array(await response.arrayBuffer())
+                      })
+                data.then(data =>
+                    tauriInvoke("write_image_clipboard", {
+                        data: Array.from(data),
+                    })
+                ).catch(err =>
+                    utilsBridge.showErrorBox("Copy image", String(err))
+                )
+                break
+            }
+            case ImageCallbackTypes.CopyLink:
+                tauriInvoke("write_clipboard", { text: lastContextImageSrc })
+                break
         }
-        ipcRenderer.on("webview-keydown", listener)
+    },
+
+    addWebviewKeydownListener: (
+        callback: (event: WebviewInputEvent) => any
+    ) => {
+        webviewKeydownListeners.add(callback)
         return () => {
-            ipcRenderer.removeListener("webview-keydown", listener)
+            webviewKeydownListeners.delete(callback)
         }
     },
 
     addWebviewErrorListener: (callback: (reason: string) => any) => {
-        ipcRenderer.removeAllListeners("webview-error")
-        const listener = (_, reason) => {
-            callback(reason)
-        }
-        ipcRenderer.on("webview-error", listener)
+        webviewErrorListeners.add(callback)
         return () => {
-            ipcRenderer.removeListener("webview-error", listener)
+            webviewErrorListeners.delete(callback)
         }
     },
 
     writeClipboard: (text: string) => {
-        ipcRenderer.invoke("write-clipboard", text)
+        tauriInvoke("write_clipboard", { text })
     },
 
     closeWindow: () => {
-        ipcRenderer.invoke("close-window")
+        tauriInvoke("close_window")
     },
     minimizeWindow: () => {
-        ipcRenderer.invoke("minimize-window")
+        tauriInvoke("minimize_window")
     },
     maximizeWindow: () => {
-        ipcRenderer.invoke("maximize-window")
+        tauriInvoke<boolean>("maximize_window").then(isMax => {
+            runtimeState.isMaximized = isMax
+        })
     },
     isMaximized: () => {
-        return ipcRenderer.sendSync("is-maximized") as boolean
+        return runtimeState.isMaximized
     },
     isFullscreen: () => {
-        return ipcRenderer.sendSync("is-fullscreen") as boolean
+        return runtimeState.isFullscreen
     },
     isFocused: () => {
-        return ipcRenderer.sendSync("is-focused") as boolean
+        return runtimeState.isFocused
     },
     focus: () => {
-        ipcRenderer.invoke("request-focus")
+        tauriInvoke("request_focus")
     },
     requestAttention: () => {
-        ipcRenderer.invoke("request-attention")
+        tauriInvoke("request_attention")
     },
     addWindowStateListener: (
         callback: (type: WindowStateListenerType, state: boolean) => any
     ) => {
-        ipcRenderer.removeAllListeners("maximized")
-        ipcRenderer.on("maximized", () => {
-            callback(WindowStateListenerType.Maximized, true)
-        })
-        ipcRenderer.removeAllListeners("unmaximized")
-        ipcRenderer.on("unmaximized", () => {
-            callback(WindowStateListenerType.Maximized, false)
-        })
-        ipcRenderer.removeAllListeners("enter-fullscreen")
-        ipcRenderer.on("enter-fullscreen", () => {
-            callback(WindowStateListenerType.Fullscreen, true)
-        })
-        ipcRenderer.removeAllListeners("leave-fullscreen")
-        ipcRenderer.on("leave-fullscreen", () => {
-            callback(WindowStateListenerType.Fullscreen, false)
-        })
-        ipcRenderer.removeAllListeners("window-focus")
-        ipcRenderer.on("window-focus", () => {
-            callback(WindowStateListenerType.Focused, true)
-        })
-        ipcRenderer.removeAllListeners("window-blur")
-        ipcRenderer.on("window-blur", () => {
-            callback(WindowStateListenerType.Focused, false)
-        })
+        windowStateListeners.add(callback)
     },
 
-    addTouchBarEventsListener: (callback: (IObjectWithKey) => any) => {
-        ipcRenderer.removeAllListeners("touchbar-event")
-        ipcRenderer.on("touchbar-event", (_, key: string) => {
-            callback({ key: key })
-        })
-    },
-    initTouchBar: (texts: TouchBarTexts) => {
-        ipcRenderer.invoke("touchbar-init", texts)
-    },
-    destroyTouchBar: () => {
-        ipcRenderer.invoke("touchbar-destroy")
-    },
+    addTouchBarEventsListener: (_callback: (e: IObjectWithKey) => any) => {},
+    initTouchBar: (_texts: TouchBarTexts) => {},
+    destroyTouchBar: () => {},
 
-    initFontList: (): Promise<Array<string>> => {
-        return ipcRenderer.invoke("init-font-list")
+    initFontList: () => {
+        return tauriInvoke<Array<string>>("init_font_list")
     },
+}
+
+interface UtilsBridge {
+    platform: string
+    getVersion(): string
+    openExternal(url: string, background?: boolean): void
+    showErrorBox(title: string, content: string, copy?: string): Promise<void>
+    showMessageBox(
+        title: string,
+        message: string,
+        confirm: string,
+        cancel: string,
+        defaultCancel?: boolean,
+        type?: string
+    ): Promise<boolean>
+    showSaveDialog(
+        filters: FileFilter[],
+        path: string
+    ): Promise<((resultContent: string, errmsg: string) => void) | null>
+    showOpenDialog(filters: FileFilter[]): Promise<string | null>
+    getCacheSize(): Promise<number>
+    clearCache(): Promise<void>
+    addMainContextListener(
+        callback: (pos: [number, number], text: string) => any
+    ): void
+    addWebviewContextListener(
+        callback: (pos: [number, number], text: string, url: string) => any
+    ): () => void
+    imageCallback(type: ImageCallbackTypes): void
+    addWebviewKeydownListener(
+        callback: (event: WebviewInputEvent) => any
+    ): () => void
+    addWebviewErrorListener(callback: (reason: string) => any): () => void
+    writeClipboard(text: string): void
+    closeWindow(): void
+    minimizeWindow(): void
+    maximizeWindow(): void
+    isMaximized(): boolean
+    isFullscreen(): boolean
+    isFocused(): boolean
+    focus(): void
+    requestAttention(): void
+    addWindowStateListener(
+        callback: (type: WindowStateListenerType, state: boolean) => any
+    ): void
+    addTouchBarEventsListener(callback: (e: IObjectWithKey) => any): void
+    initTouchBar(texts: TouchBarTexts): void
+    destroyTouchBar(): void
+    initFontList(): Promise<string[]>
 }
 
 declare global {
     interface Window {
-        utils: typeof utilsBridge
+        utils: UtilsBridge
         fontList: Array<string>
     }
-    var utils: typeof utilsBridge
+    var utils: UtilsBridge
     var fontList: Array<string>
 }
 

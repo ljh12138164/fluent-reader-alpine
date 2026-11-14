@@ -239,6 +239,7 @@ const Nav: React.FC = () => {
 
     return (
         <nav
+            data-tauri-drag-region
             className={mergeClasses(
                 classes.nav,
                 state.settings.display && "hide-btns",
@@ -247,6 +248,7 @@ const Nav: React.FC = () => {
                 isBlurred && classes.navBlurred
             )}>
             <div
+                data-tauri-drag-region
                 className={mergeClasses(
                     classes.navContent,
                     articleOverlayOpen && classes.navContentBlurred
@@ -265,7 +267,9 @@ const Nav: React.FC = () => {
                         </FlatButton>
                     </FlatButtonGroup>
                 )}
-                <span className="title">{state.title}</span>
+                <span data-tauri-drag-region className="title">
+                    {state.title}
+                </span>
                 <FlatButtonGroup styleClass={classes.navGroupRight}>
                     {isNonNavButtonShown && (
                         <>

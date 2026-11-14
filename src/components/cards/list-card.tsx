@@ -15,36 +15,44 @@ const className = (props: Card.Props) => {
     return cn.join(" ")
 }
 
-const ListCard: React.FunctionComponent<Card.Props> = props => (
-    <div
-        className={className(props)}
-        {...Card.bindEventsToProps(props)}
-        data-iid={props.item._id}
-        data-is-focusable>
-        {props.item.thumb && props.viewConfigs & ViewConfigs.ShowCover ? (
-            <div className="head">
-                <img src={props.item.thumb} />
-            </div>
-        ) : null}
-        <div className="data">
-            <CardInfo source={props.source} item={props.item} />
-            <h3 className="title">
-                <Highlights
-                    text={props.item.title}
-                    filter={props.filter}
-                    title
-                />
-            </h3>
-            {Boolean(props.viewConfigs & ViewConfigs.ShowSnippet) && (
-                <p className="snippet">
-                    <Highlights
-                        text={props.item.snippet}
-                        filter={props.filter}
+const ListCard: React.FunctionComponent<Card.Props> = React.memo(
+    props => (
+        <div
+            className={className(props)}
+            {...Card.bindEventsToProps(props)}
+            data-iid={props.item._id}
+            data-is-focusable
+            tabIndex={-1}>
+            {props.item.thumb && props.viewConfigs & ViewConfigs.ShowCover ? (
+                <div className="head">
+                    <img
+                        src={props.item.thumb}
+                        loading="lazy"
+                        decoding="async"
                     />
-                </p>
-            )}
+                </div>
+            ) : null}
+            <div className="data">
+                <CardInfo source={props.source} item={props.item} />
+                <h3 className="title">
+                    <Highlights
+                        text={props.item.title}
+                        filter={props.filter}
+                        title
+                    />
+                </h3>
+                {Boolean(props.viewConfigs & ViewConfigs.ShowSnippet) && (
+                    <p className="snippet">
+                        <Highlights
+                            text={props.item.snippet}
+                            filter={props.filter}
+                        />
+                    </p>
+                )}
+            </div>
         </div>
-    </div>
+    ),
+    Card.arePropsEqual
 )
 
 export default ListCard

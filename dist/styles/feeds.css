@@ -3,6 +3,9 @@
     height: calc(100% - var(--navHeight));
     overflow: hidden scroll;
     position: relative;
+    will-change: scroll-position;
+    transform: translateZ(0);
+    contain: strict;
 }
 
 .magazine-feed,
@@ -11,6 +14,9 @@
     height: calc(100% - 60px);
     overflow: hidden scroll;
     margin-top: var(--navHeight);
+    will-change: scroll-position;
+    transform: translateZ(0);
+    contain: content;
 }
 .magazine-feed .ms-List-page {
     display: flex;
@@ -28,6 +34,9 @@
     margin-top: var(--navHeight);
     width: 100%;
     box-sizing: border-box;
+    will-change: scroll-position;
+    transform: translateZ(0);
+    contain: content;
 }
 .cards-feed-container .ms-List-page {
     display: flex;

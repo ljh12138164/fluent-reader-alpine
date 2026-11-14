@@ -23,8 +23,8 @@ export function GroupCreateForm({
     const error = !trimmed
         ? intl.get("emptyName")
         : groups.some(group => group.isMultiple && group.name === trimmed)
-        ? intl.get("groups.exist")
-        : ""
+          ? intl.get("groups.exist")
+          : ""
 
     function create(event: React.FormEvent) {
         event.preventDefault()

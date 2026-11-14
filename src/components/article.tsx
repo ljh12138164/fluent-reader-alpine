@@ -345,7 +345,7 @@ function Article({ itemId, side = false }: ArticleProps) {
         )
         return `article/article.html?a=${a}&h=${h}&f=${encodeURIComponent(
             fontFamily
-        )}&s=${fontSize}&d=${source.textDir}&u=${item.link}&m=${
+        )}&s=${fontSize}&d=${source.textDir}&u=${encodeURIComponent(item.link)}&m=${
             loadFull ? 1 : 0
         }`
     }
@@ -485,7 +485,7 @@ function Article({ itemId, side = false }: ArticleProps) {
                 </Stack>
             </Stack>
             {showWebview && (
-                <webview
+                <iframe
                     id="article"
                     className={mergeClasses(
                         classes.content,
@@ -493,10 +493,8 @@ function Article({ itemId, side = false }: ArticleProps) {
                     )}
                     ref={webview}
                     key={webviewKey}
+                    sandbox={loadWebpage ? undefined : "allow-scripts"}
                     src={loadWebpage ? item.link : articleView()}
-                    allowpopups={"true" as unknown as boolean}
-                    webpreferences="contextIsolation,disableDialogs,autoplayPolicy=document-user-activation-required"
-                    partition={loadWebpage ? "sandbox" : undefined}
                 />
             )}
             {error && (

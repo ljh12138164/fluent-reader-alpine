@@ -37,8 +37,8 @@ export function RuleEditor({
         rule?.filter.type & FilterType.FullSearch
             ? "1"
             : rule?.filter.type & FilterType.CreatorSearch
-            ? "2"
-            : "0"
+              ? "2"
+              : "0"
     )
     const [caseSensitive, setCaseSensitive] = useState(
         rule ? !(rule.filter.type & FilterType.CaseInsensitive) : false
@@ -52,8 +52,8 @@ export function RuleEditor({
         regex.length === 0
             ? intl.get("emptyField")
             : validateRegex(regex) === null
-            ? intl.get("rules.badRegex")
-            : ""
+              ? intl.get("rules.badRegex")
+              : ""
     function saveRule() {
         if (regexError || actionKeys.length === 0) return
         let filter = FilterType.Default | FilterType.ShowHidden

@@ -1,87 +1,88 @@
-<html>
+<html lang="en">
     <head>
-        <title>Fluent Reader</title>
-        <link rel="icon" href="imgs/icon.png">
+        <meta charset="UTF-8">
+        <title>Fluent Reader Alpine — Fluent Reader 轻量版</title>
+        <meta name="description" content="Fluent Reader Alpine 是 Fluent Reader 的轻量版，使用 Tauri 桌面运行时和虚拟化文章列表，延续上游界面与主要阅读功能。">
+        <link rel="icon" href="imgs/icon-alpine.png">
         <link rel="stylesheet" href="styles.css">
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-        <meta name="apple-itunes-app" content="app-id=6761698838">
     </head>
     <body>
         <div class="logo-container">
-            <img src="imgs/logo.svg" />
-            <header>Fluent Reader</header>
+            <img src="imgs/icon-alpine.png" alt="Fluent Reader Alpine icon" />
+            <header>Fluent Reader Alpine</header>
         </div>
         <div class="light-container">
-            <div class="screenshot elevate"><img src="imgs/light.png" /></div>
-            <h1>Modern desktop RSS reader. Open-source.</h1>
+            <div class="screenshot elevate"><img src="imgs/light.png" alt="Inherited upstream reading interface in light mode" /></div>
+            <h1>Fluent Reader 轻量版</h1>
             <p>
-                Fluent Reader is a local, cross-platform news aggregator with a fresh look.
-                Bring all your favorite sources with you and read distraction-free.
+                A lightweight, independently maintained fork of
+                <a href="https://github.com/yang991178/fluent-reader">Fluent Reader</a>
+                by Haoyuan Liu and its contributors. Alpine keeps the familiar reading
+                interface and feed logic, with a Tauri runtime and virtualized article views.
+                Screenshots illustrate the inherited upstream interface.
             </p>
         </div>
         <div class="features-container">
             <section class="elevate">
                 <h2>Open & Organized.</h2>
                 <p>
-                    Stay in sync with Inoreader, Feedbin, or services compatible with
-                    Fever or Google Reader API. Alternatively, import your sources from
-                    an OPML file and read locally.
-                    Easily organize sources with groups. Move between computers with full
-                    data backups.
+                    Stay in sync with Inoreader, Feedbin, Miniflux, Nextcloud, or services
+                    compatible with Fever or Google Reader API. Alternatively, import
+                    your sources from an OPML file and read locally. Organize sources
+                    with groups and move between computers with full data backups.
                 </p>
-                <img class="elevate" src="imgs/opml.png" />
+                <img class="elevate" src="imgs/opml.png" alt="OPML import and subscription settings" />
             </section>
             <section class="elevate">
                 <h2>Read fluently.</h2>
                 <p>
-                    Enjoy your contents like never before with the built-in article view 
-                    for RSS full text tailored to maximize focus. Source only comes with 
-                    snippets? Configure to load full content with Mercury Parser, load
-                    webpage in the app, or open externally by default.
+                    Read RSS content with the built-in article view. For feeds that only
+                    provide snippets, extract full content with Mercury Parser, load the
+                    webpage in the app, or open it externally. Choose card, list,
+                    magazine or compact layouts with virtualized article views.
                 </p>
-                <img class="elevate" src="imgs/read.png" />
+                <img class="elevate" src="imgs/read.png" alt="Built-in article reading view" />
             </section>
             <section class="elevate">
                 <h2>Search. Filter.</h2>
                 <p>
-                    Find anything you want with the power of regular expressions. Search in 
-                    both titles and full contents of articles. Mark articles as starred, 
-                    hidden, or unread and filter as they arrive with custom rules based 
-                    on regular expressions.
+                    Search article titles and contents with regular expressions.
+                    Mark articles as starred, hidden or unread, and automate these
+                    actions with rules as articles arrive.
                 </p>
-                <img class="elevate center" src="imgs/search.png" />
+                <img class="elevate center" src="imgs/search.png" alt="Article search and filters" />
             </section>
             <section class="elevate">
-                <h2>Privacy first.</h2>
-                <h3>All your data stays with you.</h3>
-                <h3>All cookies cleared upon exit.</h3>
-                <h3>XSS blocked in an isolated context.</h3>
-                <h3>No personal information collected, ever.</h3>
-                <h3>Behavior tracking limited.</h3>
-                <h3>Strict Content Security Policy enforced.</h3>
-                <h3>Proxy support with PAC.</h3>
-                <br />
-                <h3><span>■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■</span></h3>
-                <h3><span>■ ■ ■ ■ ■ ■</span></h3>
-                <h3><span>■ ■ ■ ■ ■ ■ ■ ■ ■</span></h3>
-                <h3><span>■ ■ ■ ■ ■ ■ ■</span></h3>
+                <h2>A lighter foundation.</h2>
+                <p>
+                    Tauri uses your system WebView instead of bundling a complete
+                    Chromium and Node.js runtime. Rust manages native operations and
+                    the local SQLite database. Virtualized views mount articles near
+                    the visible area, while pnpm, Rspack and Oxc handle frontend builds
+                    and checks. PAC proxy settings apply to native HTTP requests.
+                </p>
+                <p>
+                    Actual resource use depends on your system WebView and feeds.
+                    Alpine retains the upstream BSD 3-Clause license and attribution.
+                </p>
             </section>
         </div>
         <div class="dark-container">
-            <div class="screenshot elevate"><img src="imgs/dark.png" /></div>
-            <h1>Oh, it also comes in black.</h1>
-            <p>Full system-level dark mode support for both UI and reading.</p>
+            <div class="screenshot elevate"><img src="imgs/dark.png" alt="Inherited upstream reading interface in dark mode" /></div>
+            <h1>Light, dark, or follow your system.</h1>
+            <p>Theme support for both the interface and article reading.</p>
         </div>
         <div class="get-container">
-            <div class="stores">
-                <a href="https://www.microsoft.com/store/apps/9P71FC94LRH8?cid=website"><img class="ms-get" src="imgs/store.png" /></a>
-                <a href="https://apps.apple.com/app/id6761698838"><img class="mac-get" src="imgs/mac_store.svg" /></a>
-            </div>
-            <div><a href="https://github.com/yang991178/fluent-reader/releases">Download from GitHub Releases</a></div>
+            <h2>Get Fluent Reader Alpine</h2>
+            <p>Version 0.1.0: Windows x64 installer, macOS Universal DMG and Linux x64 AppImage.</p>
+            <p>CI builds all three platforms together and uploads them to one draft Release for review before publication.</p>
+            <p>Windows builds require the Microsoft Edge WebView2 Runtime.</p>
+            <div><a href="https://github.com/ljh12138164/fluent-reader-alpine/releases">Download from this project's Releases</a></div>
             <div class="links">
-                <a href="https://github.com/yang991178/fluent-reader/">GitHub</a>
-                <a href="https://github.com/yang991178/fluent-reader/wiki/Support">Help</a>
-                <a href="https://hyliu.me/fluent-reader-lite/">Mobile App</a>
+                <a href="https://github.com/ljh12138164/fluent-reader-alpine/">GitHub</a>
+                <a href="https://github.com/ljh12138164/fluent-reader-alpine/issues">Feedback</a>
+                <a href="https://github.com/yang991178/fluent-reader/">Upstream</a>
             </div>
         </div>
     </body>

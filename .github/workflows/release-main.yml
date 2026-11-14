@@ -1,57 +1,153 @@
-name: CI/CD Release
+name: Build and draft release
 
 on:
     push:
         tags:
             - "v*"
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: Existing version tag to build
+                required: true
+                default: v0.1.0
+                type: string
+
+permissions:
+    contents: read
+
+concurrency:
+    group: release-${{ inputs.tag || github.ref_name }}
+    cancel-in-progress: false
 
 jobs:
-    release:
-        runs-on: windows-latest
-
+    version:
+        runs-on: ubuntu-latest
+        outputs:
+            tag: ${{ steps.version.outputs.tag }}
+            version: ${{ steps.version.outputs.version }}
         steps:
-            - uses: actions/checkout@v2
-
-            - name: Build and package the app
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ inputs.tag || github.ref }}
+            - uses: actions/setup-node@v7
+              with:
+                  node-version: "24"
+            - name: Check tag and application versions
+              id: version
+              env:
+                  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
               run: |
-                  npm install
-                  npm run build
-                  npm run package-win-ci
+                  node --input-type=module <<'NODE'
+                  import { readFileSync, appendFileSync } from 'node:fs'
+                  const read = file => readFileSync(file, 'utf8')
+                  const version = JSON.parse(read('package.json')).version
+                  const tauri = JSON.parse(read('src-tauri/tauri.conf.json')).version
+                  const cargo = read('src-tauri/Cargo.toml').match(/^version = "([^"]+)"/m)?.[1]
+                  const lock = read('src-tauri/Cargo.lock').match(/name = "fluent-reader-alpine"\r?\nversion = "([^"]+)"/)?.[1]
+                  if (![tauri, cargo, lock].every(value => value === version)) throw Error('Application versions differ')
+                  if (process.env.RELEASE_TAG !== `v${version}`) throw Error('Tag must match the application version')
+                  appendFileSync(process.env.GITHUB_OUTPUT, `tag=v${version}\nversion=${version}\n`)
+                  NODE
 
-            - name: Get app version
-              id: package-version
+    build:
+        needs: version
+        name: Build ${{ matrix.platform }}
+        runs-on: ${{ matrix.runner }}
+        timeout-minutes: 60
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - platform: windows-x64
+                      runner: windows-latest
+                      target: x86_64-pc-windows-msvc
+                      rust-targets: x86_64-pc-windows-msvc
+                      bundle: nsis
+                      pattern: nsis/*-setup.exe
+                      suffix: windows-x64-setup.exe
+                    - platform: macos-universal
+                      runner: macos-15
+                      target: universal-apple-darwin
+                      rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+                      bundle: dmg
+                      pattern: dmg/*.dmg
+                      suffix: macos-universal.dmg
+                    - platform: linux-x64
+                      runner: ubuntu-22.04
+                      target: x86_64-unknown-linux-gnu
+                      rust-targets: x86_64-unknown-linux-gnu
+                      bundle: appimage
+                      pattern: appimage/*.AppImage
+                      suffix: linux-x64.AppImage
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ needs.version.outputs.tag }}
+            - uses: pnpm/action-setup@v6
+            - uses: actions/setup-node@v7
+              with:
+                  node-version: "24"
+                  cache: pnpm
+            - uses: dtolnay/rust-toolchain@stable
+              with:
+                  targets: ${{ matrix.rust-targets }}
+            - uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: src-tauri -> target
+                  key: ${{ matrix.target }}
+            - name: Install Linux build dependencies
+              if: runner.os == 'Linux'
               run: |
-                  PACKAGE_VERSION=$(cat package.json | grep version | head -1 | awk -F: '{ print $2 }' | sed 's/[",]//g' | tr -d '[[:space:]]')
-                  echo ::set-output name=current-version::$PACKAGE_VERSION
-              shell: bash
-
-            - name: Create release
-              id: create_release
-              uses: actions/create-release@v1
+                  sudo apt-get update
+                  sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 xdg-utils
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm check
+            - name: Build native installer
+              run: pnpm tauri build --ci --target ${{ matrix.target }} --bundles ${{ matrix.bundle }} -- --locked
+            - name: Collect installer
+              shell: pwsh
               env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  BUNDLE_PATTERN: src-tauri/target/${{ matrix.target }}/release/bundle/${{ matrix.pattern }}
+                  ASSET_NAME: Fluent.Reader.Alpine-${{ needs.version.outputs.version }}-${{ matrix.suffix }}
+              run: |
+                  $files = @(Get-ChildItem -Path $env:BUNDLE_PATTERN -File)
+                  if ($files.Count -ne 1) { throw "Expected one installer, found $($files.Count)" }
+                  New-Item -ItemType Directory -Path release-assets -Force | Out-Null
+                  Copy-Item -LiteralPath $files[0].FullName -Destination (Join-Path release-assets $env:ASSET_NAME)
+            - uses: actions/upload-artifact@v7
               with:
-                  tag_name: ${{ github.ref }}
-                  release_name: Fluent Reader v${{ steps.package-version.outputs.current-version }}
-                  draft: true
-                  prerelease: false
+                  name: installer-${{ matrix.platform }}
+                  path: release-assets/*
+                  if-no-files-found: error
+                  compression-level: 0
 
-            - name: Upload x64 exe to release assets
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    release:
+        name: Create draft release
+        needs: [version, build]
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/download-artifact@v8
               with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: ./bin/win32/x64/Fluent Reader Setup ${{ steps.package-version.outputs.current-version }}.exe
-                  asset_name: Fluent.Reader.Setup.${{ steps.package-version.outputs.current-version }}.x64.exe
-                  asset_content_type: application/vnd.microsoft.portable-executable
-
-            - name: Upload x64 zip to release assets
-              uses: actions/upload-release-asset@v1
+                  pattern: installer-*
+                  path: release-assets
+                  merge-multiple: true
+            - name: Upload all three installers to a draft
+              shell: pwsh
               env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: ./bin/win32/x64/Fluent Reader-${{ steps.package-version.outputs.current-version }}-win.zip
-                  asset_name: Fluent.Reader.Unpacked.${{ steps.package-version.outputs.current-version }}.x64.zip
-                  asset_content_type: application/zip
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+                  RELEASE_TAG: ${{ needs.version.outputs.tag }}
+              run: |
+                  $assets = @(Get-ChildItem -Path release-assets -File)
+                  if ($assets.Count -ne 3) { throw "Expected three installers, found $($assets.Count)" }
+                  $paths = @($assets.FullName)
+                  $draft = gh release view $env:RELEASE_TAG --json isDraft --jq .isDraft 2>$null
+                  if ($LASTEXITCODE -eq 0) {
+                      if ($draft -ne 'true') { throw 'Refusing to replace a published release' }
+                      gh release upload $env:RELEASE_TAG @paths --clobber
+                  } else {
+                      gh release create $env:RELEASE_TAG @paths --draft --verify-tag --generate-notes --title "Fluent Reader Alpine $env:RELEASE_TAG"
+                  }
+                  if ($LASTEXITCODE -ne 0) { throw 'Draft release upload failed' }

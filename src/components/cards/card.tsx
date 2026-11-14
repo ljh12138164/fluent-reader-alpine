@@ -19,6 +19,14 @@ export namespace Card {
         showItem: (fid: string, item: RSSItem) => void
     }
 
+    export const arePropsEqual = (prev: Props, next: Props) =>
+        prev.item === next.item &&
+        prev.source === next.source &&
+        prev.selected === next.selected &&
+        prev.filter === next.filter &&
+        prev.viewConfigs === next.viewConfigs &&
+        prev.feedId === next.feedId
+
     const openInBrowser = (props: Props, e: React.MouseEvent) => {
         props.markRead(props.item)
         window.utils.openExternal(props.item.link, platformCtrl(e))

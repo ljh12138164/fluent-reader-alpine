@@ -179,7 +179,7 @@ const Page: React.FC = () => {
                     disabled={contextOn}
                     firstFocusableTarget={root => {
                         const webview =
-                            root.querySelector<HTMLElement>("webview")
+                            root.querySelector<HTMLElement>("#article")
                         return webview?.getClientRects().length
                             ? webview
                             : root.querySelector<HTMLElement>(".article")

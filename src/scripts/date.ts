@@ -4,8 +4,8 @@ export function findValidDate(...values: unknown[]): Date | undefined {
             value instanceof Date
                 ? value
                 : typeof value === "string" || typeof value === "number"
-                ? new Date(value)
-                : null
+                  ? new Date(value)
+                  : null
         if (date && Number.isFinite(date.getTime())) return date
     }
     return undefined

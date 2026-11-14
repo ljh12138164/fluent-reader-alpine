@@ -8,10 +8,11 @@ From the application repository root:
 
 ```sh
 git submodule update --init tests/e2e
-npm install
-npm run build
-npm --prefix tests/e2e ci
-npm --prefix tests/e2e test
+pnpm install --frozen-lockfile
+pnpm build
+pnpm --dir tests/e2e import
+pnpm --dir tests/e2e install --frozen-lockfile
+pnpm --dir tests/e2e test
 ```
 
 See `tests/e2e/README.md` for the harness architecture and diagnostics. Commit

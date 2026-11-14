@@ -1,3 +1,4 @@
+import { fetch } from "../../../bridges/http"
 import {
     useCallback,
     useEffect,
@@ -33,7 +34,7 @@ export function useArticleView(item: RSSItem, openTarget: SourceOpenTarget) {
     const itemId = item._id
     const [view, setView] = useState(() => initialView(itemId, openTarget))
     const articleRef = useRef<HTMLElement>(null)
-    const webview = useRef<Electron.WebviewTag>(null)
+    const webview = useRef<HTMLIFrameElement>(null)
     const refocusItemId = useRef(itemId)
 
     // Reset before committing a new article so it never mounts the previous mode
@@ -63,7 +64,7 @@ export function useArticleView(item: RSSItem, openTarget: SourceOpenTarget) {
         }
 
         const onLoaded = () => setView(view => ({ ...view, loaded: true }))
-        node.addEventListener("did-stop-loading", onLoaded)
+        node.addEventListener("load", onLoaded)
         setView(view => ({ ...view, loaded: false, error: "" }))
         // Focus only a newly mounted guest. Read/star and toolbar updates must
         // leave the user's current focus and scroll position alone.
@@ -71,10 +72,10 @@ export function useArticleView(item: RSSItem, openTarget: SourceOpenTarget) {
         const card = articleCard(itemId)
         // Chromium supports this without scrolling an already visible card.
         // @ts-ignore
-        card?.scrollIntoViewIfNeeded()
+        card?.scrollIntoViewIfNeeded?.()
 
         return () => {
-            node.removeEventListener("did-stop-loading", onLoaded)
+            node.removeEventListener("load", onLoaded)
         }
     }, [itemId, view.mode, showWebview])
 
@@ -139,7 +140,12 @@ export function useArticleView(item: RSSItem, openTarget: SourceOpenTarget) {
     const reload = () => {
         if (webview.current) {
             setView(view => ({ ...view, loaded: false, error: "" }))
-            webview.current.reload()
+            try {
+                webview.current.contentWindow?.location.reload()
+            } catch {
+                const currentSrc = webview.current.src
+                webview.current.src = currentSrc
+            }
         } else if (loadFull) {
             setView(view => ({
                 ...view,
