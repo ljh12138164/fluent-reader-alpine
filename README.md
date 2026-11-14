@@ -1,58 +1,58 @@
 <p align="center">
-  <img width="120" height="120" src="build/icon-alpine.png" alt="Fluent Reader Alpine 图标">
+  <img width="120" height="120" src="build/icon-alpine.png" alt="Fluent Reader Alpine icon">
 </p>
 <h1 align="center">Fluent Reader Alpine</h1>
-<p align="center">Fluent Reader 轻量版 · Tauri 桌面 RSS 阅读器</p>
+<p align="center">A lightweight edition of Fluent Reader, powered by Tauri</p>
 <p align="center">
-  <a href="https://github.com/ljh12138164/fluent-reader-alpine/releases">下载</a> ·
-  <a href="https://github.com/ljh12138164/fluent-reader-alpine/issues">问题反馈</a> ·
-  <a href="https://github.com/yang991178/fluent-reader">上游项目</a>
+  <a href="https://github.com/ljh12138164/fluent-reader-alpine/releases">Download</a> ·
+  <a href="https://github.com/ljh12138164/fluent-reader-alpine/issues">Feedback</a> ·
+  <a href="https://github.com/yang991178/fluent-reader">Upstream</a>
 </p>
 
-**Fluent Reader Alpine 是 [Fluent Reader](https://github.com/yang991178/fluent-reader) 的轻量版。** 项目基于上游代码独立维护，延续其 Fluent Design 界面、RSS 抓取和服务同步逻辑，将桌面运行时迁移到 Tauri，并优化长列表滚动和构建流程。“轻量版”侧重减少桌面运行时的打包负担，保留上游的主要阅读功能。
+**Fluent Reader Alpine is a lightweight edition of [Fluent Reader](https://github.com/yang991178/fluent-reader).** This independently maintained fork preserves the upstream Fluent Design interface, feed fetching and service synchronization logic while moving the desktop runtime to Tauri and improving article list virtualization and frontend builds.
 
-原项目由 **Haoyuan Liu（yang991178）及其贡献者**开发。Alpine 是独立维护的衍生项目，不是上游官方发行版，也不同于上游的移动端项目 Fluent Reader Lite。
+The original project was developed by **Haoyuan Liu (yang991178) and its contributors**. Alpine is an independent derivative, separate from the upstream desktop releases and the Fluent Reader Lite mobile app.
 
-## 轻量化改动
+## Lightweight foundation
 
-| 方向 | Alpine 的实现 |
+| Area | Alpine implementation |
 | --- | --- |
-| 桌面运行时 | 使用 Tauri 和 Rust，通过系统 WebView 显示界面，无需随应用打包完整 Chromium 与 Node.js |
-| 数据存储 | 使用 Rust / rusqlite 管理 SQLite，通过 Drizzle sqlite-proxy 供前端查询 |
-| 列表滚动 | 卡片、列表、杂志和紧凑视图使用虚拟化，只挂载可视区域附近的文章 |
-| 前端构建 | 使用 pnpm 和 Rspack；用 Oxlint、Oxfmt 和 TypeScript 校验项目 |
+| Desktop runtime | Tauri and Rust use the system WebView, without bundling a complete Chromium and Node.js runtime |
+| Storage | Rust / rusqlite manage SQLite, queried by the frontend through Drizzle sqlite-proxy |
+| Article lists | Card, list, magazine and compact layouts mount articles near the visible area |
+| Frontend tooling | pnpm and Rspack for builds; Oxlint, Oxfmt and TypeScript for checks |
 
-“轻量”主要指运行时和构建方式。实际内存占用、启动速度和滚动表现取决于系统 WebView、订阅规模及文章内容，此处不提供未经对比测试的性能数字。
+The lightweight edition focuses on a smaller runtime footprint while retaining the main reading features. Actual memory use, startup time and scrolling performance depend on the system WebView, feed collection and article content.
 
-## 功能
+## Features
 
-- 本地订阅和定时抓取，浅色、深色及跟随系统主题。
-- 卡片、列表、杂志和紧凑阅读视图，文章正文、全文提取和网页阅读。
-- 未读、收藏、隐藏状态筛选及正则表达式搜索。
-- 订阅分组、OPML 导入与导出、应用数据备份与恢复。
-- 根据规则自动标记已读、收藏或隐藏文章。
-- 单键快捷键和桌面新文章通知。
-- 延续上游的 Fever、Google Reader API、Inoreader、Feedbin、Miniflux 和 Nextcloud 服务接入。
+- Local subscriptions and scheduled fetching, with light, dark and system themes.
+- Card, list, magazine and compact layouts, built-in article reading, full-text extraction and webpage loading.
+- Unread, starred and hidden filters, plus regular-expression search.
+- Subscription groups, OPML import/export, and application backup/restore.
+- Rules to automatically mark articles as read, starred or hidden.
+- Single-key shortcuts and native desktop notifications for new articles.
+- Upstream service integrations for Fever, Google Reader API, Inoreader, Feedbin, Miniflux and Nextcloud.
 
 <p align="center">
-  <img src="docs/imgs/screenshot.jpg" alt="继承自上游的 Fluent Reader 阅读界面">
+  <img src="docs/imgs/screenshot.jpg" alt="The Fluent Reader interface inherited from upstream">
 </p>
 
-上图为上游界面示意，Alpine 延续其整体布局；具体界面以当前版本为准。
+This upstream screenshot illustrates the inherited layout. The current Alpine release may differ in details.
 
-## 下载与运行
+## Download and installation
 
-当前版本为 **0.1.0**。CI 会为 Windows、macOS 和 Linux 自动构建安装包，并统一上传到草稿 Release，供维护者验收。草稿正式发布后，可以从 **[本项目 Releases](https://github.com/ljh12138164/fluent-reader-alpine/releases)** 下载。
+The current version is **0.1.0**. CI builds Windows, macOS and Linux installers and uploads them to a draft Release for review. Once published, packages are available from **[this project's Releases](https://github.com/ljh12138164/fluent-reader-alpine/releases)**.
 
-- **Windows 安装版**：运行 `*-setup.exe`。
-- **macOS**：使用 Universal DMG，兼容 Apple Silicon 和 Intel Mac。
-- **Linux**：使用 x64 AppImage，下载后添加执行权限再运行。
+- **Windows x64:** run the `*-setup.exe` installer.
+- **macOS:** use the Universal DMG, supporting Apple Silicon and Intel Macs.
+- **Linux x64:** make the AppImage executable, then run it.
 
-Windows 包依赖 Microsoft Edge WebView2 Runtime。当前以 Windows 为主要运行验收平台；CI 构建成功不代表已完成 macOS 实机验收。macOS 包暂未配置 Apple 开发者签名与公证。本项目的发行包不通过上游的 Microsoft Store 或 Mac App Store 页面分发。
+Windows requires Microsoft Edge WebView2 Runtime. Windows is the primary platform for runtime acceptance testing; a successful CI build does not replace testing on a physical Mac. Apple Developer signing and notarization are not configured for the macOS package. Alpine packages are distributed through this repository's Releases.
 
-## 本地开发
+## Development
 
-准备 Node.js 24、`package.json` 中指定版本的 pnpm，以及对应平台的 [Tauri 构建环境](https://v2.tauri.app/start/prerequisites/)。
+Install Node.js 24, the pnpm version pinned in `package.json`, and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -60,43 +60,43 @@ pnpm check
 pnpm build
 ```
 
-启动桌面应用：
+Launch the desktop app:
 
 ```sh
 pnpm dev
 ```
 
-生成原生发行包：
+Build native packages:
 
 ```sh
 pnpm package
 ```
 
-`pnpm check` 执行 Oxlint、Oxfmt 和 TypeScript 检查；`pnpm format` 应用格式化。`pnpm build` 通过 Rspack 将前端输出到 `dist/`。启动及打包命令会自动构建前端，原生安装包输出到 `src-tauri/target/release/bundle/`。
+`pnpm check` runs Oxlint, Oxfmt and TypeScript. Use `pnpm format` to apply formatting. `pnpm build` compiles the frontend with Rspack into `dist/`. Development and packaging commands build the frontend automatically. Native bundles are written to `src-tauri/target/release/bundle/`.
 
-`dist/` 还包含受版本控制的静态资源，不能作为纯构建缓存整体删除。可选私有 E2E 测试的说明见 [tests/README.md](tests/README.md)，常规开发与构建不依赖它。
+`dist/` also contains tracked static assets, so do not delete the whole directory as a build cache. The optional private E2E suite is described in [tests/README.md](tests/README.md); normal builds do not require it.
 
-### CI 发布流程
+### CI releases
 
-推送与应用版本一致的 `v*` 标签（首版为 `v0.1.0`），触发[三平台工作流](.github/workflows/release-main.yml)。也可以在 Actions 页面选择此工作流，用已有标签手动触发。
+Push a `v*` tag matching the application version, starting with `v0.1.0`, to trigger the [three-platform workflow](.github/workflows/release-main.yml). You can also run it manually from Actions using an existing version tag.
 
-1. 校验标签与 `package.json`、Tauri、Cargo 及 Cargo 锁文件中的版本一致。
-2. 在 Windows、macOS 和 Linux runner 上并行安装依赖，运行 `pnpm check`，通过 Tauri 构建对应安装包。
-3. 三个平台全部成功后，自动创建一个**草稿 Release**，上传以下三个文件；不生成 Windows 免安装 ZIP。
+1. Validate that the tag matches `package.json`, Tauri, Cargo and the Cargo lockfile.
+2. Install dependencies and run `pnpm check` on Windows, macOS and Linux runners, then build each installer with Tauri.
+3. After all three builds succeed, create one **draft Release** containing these three installers. A Windows portable ZIP is not generated.
 
-| 平台 | 0.1.0 发布文件 |
+| Platform | Version 0.1.0 asset |
 | --- | --- |
 | Windows x64 | `Fluent.Reader.Alpine-0.1.0-windows-x64-setup.exe` |
 | macOS Universal | `Fluent.Reader.Alpine-0.1.0-macos-universal.dmg` |
 | Linux x64 | `Fluent.Reader.Alpine-0.1.0-linux-x64.AppImage` |
 
-构建失败时不会创建 Release；成功构建的中间产物可从该次 Actions 运行页面下载。重跑同一版本可更新已有草稿中的安装包，但不会覆盖正式发布的 Release。维护者验收草稿后可手动发布，使安装包对普通下载者可见。[查看运行进度](https://github.com/ljh12138164/fluent-reader-alpine/actions)。
+Failed builds do not create a Release. Successful intermediate installers remain available as workflow artifacts. Reruns can update an existing draft but cannot overwrite a published Release. Maintainers can publish the draft after reviewing its packages. [View workflow runs](https://github.com/ljh12138164/fluent-reader-alpine/actions).
 
-## 致谢与许可证
+## Credits and license
 
-- 上游：[Fluent Reader](https://github.com/yang991178/fluent-reader)，作者 Haoyuan Liu 及其贡献者。
-- 核心技术：Tauri、Rust、React、Redux、Fluent UI、SQLite、Drizzle 和 Rspack。
-- 全文提取使用 Mercury Parser；Lovefield 用于兼容旧数据迁移。
-- Alpine 图标沿用上游的蓝色层叠纸张与白色 F 图形，仅添加绿色 Lite 角标来标识轻量版。
+- Upstream: [Fluent Reader](https://github.com/yang991178/fluent-reader), by Haoyuan Liu and its contributors.
+- Built with Tauri, Rust, React, Redux, Fluent UI, SQLite, Drizzle and Rspack.
+- Mercury Parser provides full-text extraction; Lovefield is retained for legacy data migration.
+- The Alpine icon preserves the upstream blue sheets and white F, adding a green Lite badge to identify the lightweight edition.
 
-本项目沿用 [BSD 3-Clause 许可证](LICENSE)，保留上游版权声明。与 Alpine 分支相关的问题请提交到[本项目 Issues](https://github.com/ljh12138164/fluent-reader-alpine/issues)。
+This project retains the upstream copyright notice and [BSD 3-Clause license](LICENSE). Please report Alpine-specific issues in [this repository](https://github.com/ljh12138164/fluent-reader-alpine/issues).
