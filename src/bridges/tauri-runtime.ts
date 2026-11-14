@@ -13,15 +13,6 @@ export interface FluentInitPayload {
 }
 
 declare global {
-    namespace NodeJS {
-        type Timeout = ReturnType<typeof setTimeout>
-    }
-    var Buffer: {
-        from(
-            data: string,
-            encoding?: string
-        ): { toString(encoding?: string): string }
-    }
     interface Window {
         __FLUENT_INIT__?: FluentInitPayload
         __TAURI__?: {
