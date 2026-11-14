@@ -64,21 +64,24 @@ jobs:
                       rust-targets: x86_64-pc-windows-msvc
                       bundle: nsis
                       pattern: nsis/*-setup.exe
-                      suffix: windows-x64-setup.exe
+                      prefix: Fluent.Reader.Alpine.Setup
+                      suffix: x64.exe
                     - platform: macos-universal
                       runner: macos-15
                       target: universal-apple-darwin
                       rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
                       bundle: dmg
                       pattern: dmg/*.dmg
-                      suffix: macos-universal.dmg
+                      prefix: Fluent.Reader.Alpine
+                      suffix: dmg
                     - platform: linux-x64
                       runner: ubuntu-22.04
                       target: x86_64-unknown-linux-gnu
                       rust-targets: x86_64-unknown-linux-gnu
                       bundle: appimage
                       pattern: appimage/*.AppImage
-                      suffix: linux-x64.AppImage
+                      prefix: Fluent.Reader.Alpine
+                      suffix: AppImage
         steps:
             - uses: actions/checkout@v7
               with:
@@ -108,12 +111,24 @@ jobs:
               shell: pwsh
               env:
                   BUNDLE_PATTERN: src-tauri/target/${{ matrix.target }}/release/bundle/${{ matrix.pattern }}
-                  ASSET_NAME: Fluent.Reader.Alpine-${{ needs.version.outputs.version }}-${{ matrix.suffix }}
+                  ASSET_NAME: ${{ matrix.prefix }}.${{ needs.version.outputs.version }}.${{ matrix.suffix }}
               run: |
                   $files = @(Get-ChildItem -Path $env:BUNDLE_PATTERN -File)
                   if ($files.Count -ne 1) { throw "Expected one installer, found $($files.Count)" }
                   New-Item -ItemType Directory -Path release-assets -Force | Out-Null
                   Copy-Item -LiteralPath $files[0].FullName -Destination (Join-Path release-assets $env:ASSET_NAME)
+            - name: Package Windows unpacked ZIP
+              if: runner.os == 'Windows'
+              shell: pwsh
+              env:
+                  ASSET_NAME: Fluent.Reader.Alpine.Unpacked.${{ needs.version.outputs.version }}.x64.zip
+              run: |
+                  $unpacked = Join-Path $env:RUNNER_TEMP 'alpine-unpacked'
+                  New-Item -ItemType Directory -Path $unpacked -Force | Out-Null
+                  Copy-Item -LiteralPath src-tauri/target/x86_64-pc-windows-msvc/release/fluent-reader-alpine.exe -Destination $unpacked
+                  Copy-Item -LiteralPath LICENSE -Destination (Join-Path $unpacked 'LICENSE.txt')
+                  Copy-Item -LiteralPath build/UNPACKED-README.txt -Destination (Join-Path $unpacked 'README.txt')
+                  Compress-Archive -LiteralPath (Join-Path $unpacked 'fluent-reader-alpine.exe'),(Join-Path $unpacked 'LICENSE.txt'),(Join-Path $unpacked 'README.txt') -DestinationPath (Join-Path release-assets $env:ASSET_NAME)
             - uses: actions/upload-artifact@v7
               with:
                   name: installer-${{ matrix.platform }}
@@ -133,7 +148,7 @@ jobs:
                   pattern: installer-*
                   path: release-assets
                   merge-multiple: true
-            - name: Upload all three installers to a draft
+            - name: Upload all four packages to a draft
               shell: pwsh
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -141,7 +156,7 @@ jobs:
                   RELEASE_TAG: ${{ needs.version.outputs.tag }}
               run: |
                   $assets = @(Get-ChildItem -Path release-assets -File)
-                  if ($assets.Count -ne 3) { throw "Expected three installers, found $($assets.Count)" }
+                  if ($assets.Count -ne 4) { throw "Expected four packages, found $($assets.Count)" }
                   $paths = @($assets.FullName)
                   $draft = gh release view $env:RELEASE_TAG --json isDraft --jq .isDraft 2>$null
                   if ($LASTEXITCODE -eq 0) {

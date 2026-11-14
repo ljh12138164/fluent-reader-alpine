@@ -22,7 +22,7 @@ The private E2E suite is optional. See [tests/README.md](tests/README.md) for se
 
 ## CI/CD
 
-`release-main.yml` runs when a `v*` version tag is pushed or when manually dispatched for an existing tag. It validates the package/Tauri/Cargo versions, then builds Windows x64 NSIS, universal macOS DMG, and Linux x64 AppImage in parallel. All platforms install with pnpm's frozen lockfile and run `pnpm check` before packaging. Only after all three builds succeed does the release job upload exactly three installers into one draft Release. There is no Windows portable ZIP or separate Linux release workflow. Published releases are never overwritten by a rerun.
+`release-main.yml` runs when a `v*` version tag is pushed or when manually dispatched for an existing tag. It validates the package/Tauri/Cargo versions, then builds Windows x64 NSIS, universal macOS DMG, and Linux x64 AppImage in parallel. Windows also packages an Unpacked ZIP containing the executable, license and README. The four release assets follow the upstream release formats and naming, with the Alpine product name and version. All platforms install with pnpm's frozen lockfile and run `pnpm check` before packaging. Only after all three builds succeed does the release job upload exactly four packages into one draft Release. Published releases are never overwritten by a rerun. Keep project documentation in English.
 
 ## Project Layout
 

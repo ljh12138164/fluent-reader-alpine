@@ -44,7 +44,7 @@ This upstream screenshot illustrates the inherited layout. The current Alpine re
 
 The current version is **0.1.0**. CI builds Windows, macOS and Linux installers and uploads them to a draft Release for review. Once published, packages are available from **[this project's Releases](https://github.com/ljh12138164/fluent-reader-alpine/releases)**.
 
-- **Windows x64:** run the `*-setup.exe` installer.
+- **Windows x64:** run the Setup EXE, or extract the Unpacked ZIP and run `fluent-reader-alpine.exe`.
 - **macOS:** use the Universal DMG, supporting Apple Silicon and Intel Macs.
 - **Linux x64:** make the AppImage executable, then run it.
 
@@ -82,15 +82,18 @@ Push a `v*` tag matching the application version, starting with `v0.1.0`, to tri
 
 1. Validate that the tag matches `package.json`, Tauri, Cargo and the Cargo lockfile.
 2. Install dependencies and run `pnpm check` on Windows, macOS and Linux runners, then build each installer with Tauri.
-3. After all three builds succeed, create one **draft Release** containing these three installers. A Windows portable ZIP is not generated.
+3. After all three builds succeed, create one **draft Release** containing the same four package formats as the [upstream release](https://github.com/yang991178/fluent-reader/releases/tag/v1.3.2): Windows Setup EXE, Windows Unpacked ZIP, macOS DMG and Linux AppImage.
 
 | Platform | Version 0.1.0 asset |
 | --- | --- |
-| Windows x64 | `Fluent.Reader.Alpine-0.1.0-windows-x64-setup.exe` |
-| macOS Universal | `Fluent.Reader.Alpine-0.1.0-macos-universal.dmg` |
-| Linux x64 | `Fluent.Reader.Alpine-0.1.0-linux-x64.AppImage` |
+| Windows x64 installer | `Fluent.Reader.Alpine.Setup.0.1.0.x64.exe` |
+| Windows x64 unpacked | `Fluent.Reader.Alpine.Unpacked.0.1.0.x64.zip` |
+| macOS Universal | `Fluent.Reader.Alpine.0.1.0.dmg` |
+| Linux x64 | `Fluent.Reader.Alpine.0.1.0.AppImage` |
 
-Failed builds do not create a Release. Successful intermediate installers remain available as workflow artifacts. Reruns can update an existing draft but cannot overwrite a published Release. Maintainers can publish the draft after reviewing its packages. [View workflow runs](https://github.com/ljh12138164/fluent-reader-alpine/actions).
+The Unpacked ZIP includes the executable, license and a short README. It uses the system WebView2 Runtime and stores data in the user application-data directory.
+
+Failed builds do not create a Release. Successful intermediate packages remain available as workflow artifacts. Reruns can update an existing draft but cannot overwrite a published Release. Maintainers can publish the draft after reviewing its packages. [View workflow runs](https://github.com/ljh12138164/fluent-reader-alpine/actions).
 
 ## Credits and license
 
